@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  avatar:
+    container_name: avatar
+    hostname: avatar
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./assets:/avatar/assets
