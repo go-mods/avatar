@@ -1,4 +1,4 @@
-module avatar
+module github.com/go-mods/avatar
 
 go 1.20
 

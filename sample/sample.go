@@ -1,8 +1,8 @@
 package main
 
 import (
-	"avatar"
 	"fmt"
+	"github.com/go-mods/avatar"
 	"github.com/go-mods/initials"
 	"image"
 	"image/draw"

@@ -1,9 +1,9 @@
 package main
 
 import (
-	"avatar"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/go-mods/avatar"
 	"github.com/go-mods/initials"
 	"log"
 	"net/http"
