@@ -5,3 +5,4 @@ version: '3'
 # Import tasks from other files
 includes:
   go: ./.task/go.taskfile.yml
+  docker: ./.task/docker.taskfile.yml

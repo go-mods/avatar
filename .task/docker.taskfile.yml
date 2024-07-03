@@ -1,0 +1,63 @@
+# Use Task to define tasks and run them locally or in CI
+# For more information about Task, see https://taskfile.dev/#/usage?id=usage
+version: '3'
+
+tasks:
+  build:
+    desc: "Build the docker services"
+    cmds:
+      - echo "Building services..."
+      - docker compose pull
+      - docker compose build
+    silent: true
+
+  up:
+    desc: "Start the docker services"
+    cmds:
+      - echo "Starting services..."
+      - docker compose up -d
+      - >
+        echo "Avatar server: http://localhost:8080"
+      - >
+        echo "Example requests: http://localhost:8080/api?name=John%20Doe"
+      - >
+        echo "Example requests: http://localhost:8080/api?name=John%20Doe&shape=square&width=200&height=200&backgroundColor=red&fontColor=white&fontFamily=Caprasimo&fontWeight=400&borderWidth=10&borderColor=blue&borderDash=10,10&borderRadius=50&padding=5"
+    silent: true
+
+  down:
+    desc: "Stop the docker services"
+    cmds:
+      - echo "Stopping services..."
+      - docker compose down
+    silent: true
+
+  restart:
+    desc: "Restart the docker services"
+    cmds:
+      - task: down
+      - task: up
+    silent: true
+
+  logs:
+    desc: "Show the docker services logs"
+    cmds:
+      - echo "Showing services logs..."
+      - docker compose logs -f
+    silent: true
+
+  bash:
+    desc: "Access the bash of the docker services"
+    vars:
+      DOCKER_ID:
+        sh: "docker-compose ps -q avatar"
+    cmds:
+      - echo "Accessing services bash..."
+      - docker exec -it {{.DOCKER_ID}} sh
+    silent: true
+
+  clean:
+    desc: "Clean the docker services"
+    cmds:
+      - echo "Cleaning services..."
+      - docker compose down --volumes --remove-orphans
+    silent: true
