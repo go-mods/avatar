@@ -24,8 +24,8 @@ github.com/gin-contrib/sse v0.1.0 h1:Y/yl/+YNO8GZSjAhjMsSuLt29uWRFHdHYUb5lYOV9qE
 github.com/gin-contrib/sse v0.1.0/go.mod h1:RHrZQHXnP2xjPF+u1gW/2HnVO7nvIa9PG3Gm+fLHvGI=
 github.com/gin-gonic/gin v1.10.0 h1:nTuyha1TYqgedzytsKYqna+DfLos46nTv2ygFy86HFU=
 github.com/gin-gonic/gin v1.10.0/go.mod h1:4PMNQiOhvDRa013RKVbsiNwoyezlm2rm0uX/T7kzp5Y=
-github.com/go-mods/initials v0.0.0-20240904112142-9ba457a98168 h1:+PmoRD1E7DZ3nU9qsHaygkdWez5ZZ9YO5b2iep7/Ze0=
-github.com/go-mods/initials v0.0.0-20240904112142-9ba457a98168/go.mod h1:RrFOR7/ncpotYXkR/UbGrBRxWejONy3faWgPU8v+Te0=
+github.com/go-mods/initials v0.0.0-20240904191632-aff6f3be89ad h1:6hxxC/gIoRud30/onlmHSjmOSJCwV3pOnwtGHV0ml5Q=
+github.com/go-mods/initials v0.0.0-20240904191632-aff6f3be89ad/go.mod h1:oVkbpeb26u6G9TiXVfDm9rIrZof2BwOVeQMbzpio5VA=
 github.com/go-playground/assert/v2 v2.2.0 h1:JvknZsQTYeFEAhQwI4qEt9cyV5ONwRHC+lYKSsYSR8s=
 github.com/go-playground/assert/v2 v2.2.0/go.mod h1:VDjEfimB/XKnb+ZQfWdccd7VUvScMdVu0Titje2rxJ4=
 github.com/go-playground/locales v0.14.1 h1:EWaQ/wswjilfKLTECiXz7Rh+3BjFhfDFKv/oXslEjJA=

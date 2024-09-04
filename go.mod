@@ -1,12 +1,12 @@
 module github.com/go-mods/avatar
 
-go 1.23
+go 1.22
 
 require (
 	github.com/ajstarks/svgo v0.0.0-20211024235047-1546f124cd8b
 	github.com/gin-contrib/cors v1.7.2
 	github.com/gin-gonic/gin v1.10.0
-	github.com/go-mods/initials v0.0.0-20240904112142-9ba457a98168
+	github.com/go-mods/initials v0.0.0-20240904191632-aff6f3be89ad
 	github.com/lucasb-eyer/go-colorful v1.2.0
 	golang.org/x/image v0.20.0
 )
