@@ -170,7 +170,11 @@ func generateAvatar(destination string, name string, options ...avatar.Generator
 	i := initials.GetInitials(name)
 
 	// Generate the avatar
-	svg := avatar.GetSVG(i, options...)
+	svg, err := avatar.GetSVG(i, options...)
+	if err != nil {
+		fmt.Printf("Error: %v", err)
+		return
+	}
 
 	// save the svg to a file
 	_ = os.WriteFile(fmt.Sprintf("%s/%s.svg", destination, name), svg.Bytes(), 0644) // #nosec:G306

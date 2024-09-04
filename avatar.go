@@ -4,14 +4,16 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	svg "github.com/ajstarks/svgo"
-	"github.com/lucasb-eyer/go-colorful"
-	"golang.org/x/image/colornames"
 	"io"
 	"math"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
+
+	svg "github.com/ajstarks/svgo"
+	"github.com/lucasb-eyer/go-colorful"
+	"golang.org/x/image/colornames"
 )
 
 // avatarGenerator is a struct to hold the options for the avatar generator
@@ -60,6 +62,9 @@ type avatarGenerator struct {
 	// FontColorFunc is the font color function of the svg
 	FontColorFunc ColorFunc
 
+	// FontDir is the directory where the font files are stored
+	FontDir string
+
 	// Shape is the shape of the svg
 	Shape string
 
@@ -103,7 +108,7 @@ type avatarGenerator struct {
 type GeneratorOption func(*avatarGenerator)
 
 // GetSVG returns the svg of a name
-func GetSVG(initials string, options ...GeneratorOption) bytes.Buffer {
+func GetSVG(initials string, options ...GeneratorOption) (*bytes.Buffer, error) {
 
 	// Set the default avatar generator options
 	opts := avatarGenerator{
@@ -199,6 +204,13 @@ func WithFontColor(fontColor string) GeneratorOption {
 func WithFontColorFunc(fontColorFunc ColorFunc) GeneratorOption {
 	return func(opts *avatarGenerator) {
 		opts.FontColorFunc = fontColorFunc
+	}
+}
+
+// WithFontDir sets the directory for storing font files
+func WithFontDir(fontDir string) GeneratorOption {
+	return func(opts *avatarGenerator) {
+		opts.FontDir = fontDir
 	}
 }
 
@@ -301,10 +313,15 @@ func WithRandomBorderColor() GeneratorOption {
 }
 
 // generateSVG generates the svg
-func generateSVG(opts avatarGenerator) bytes.Buffer {
+func generateSVG(opts avatarGenerator) (*bytes.Buffer, error) {
 
 	// buffer to write the svg to
-	var buffer bytes.Buffer
+	var buffer = new(bytes.Buffer)
+
+	// Set default font directory to temporary directory if not specified
+	if opts.FontDir == "" {
+		opts.FontDir = os.TempDir()
+	}
 
 	// Color randomizer
 	cr := NewColorGenerator(opts.Initials)
@@ -319,7 +336,7 @@ func generateSVG(opts avatarGenerator) bytes.Buffer {
 	}
 
 	// create the canvas
-	canvas := svg.New(&buffer)
+	canvas := svg.New(buffer)
 	canvas.Start(opts.Width, opts.Height)
 
 	// set the background color
@@ -365,12 +382,13 @@ func generateSVG(opts avatarGenerator) bytes.Buffer {
 
 	// if fontUrl and fontFile are both set, download the font and save it to the assets/fonts folder
 	if opts.fontUrl != "" && opts.fontFile != "" {
+		fontPath := filepath.Join(opts.FontDir, opts.fontFile)
 		// if the font file does not exist, download it
 		// else use the existing font file
-		if _, err := os.Stat("assets/fonts/" + opts.fontFile); os.IsNotExist(err) {
-			err := downloadFile("assets/fonts/"+opts.fontFile, opts.fontUrl)
+		if _, err := os.Stat(fontPath); os.IsNotExist(err) {
+			err := downloadFile(fontPath, opts.fontUrl)
 			if err != nil {
-				panic(err)
+				return nil, err
 			}
 		}
 	}
@@ -388,9 +406,9 @@ func generateSVG(opts avatarGenerator) bytes.Buffer {
 	// add the font file to the svg as a style
 	if opts.FontFamily != "" && opts.fontFile != "" {
 		// get the content of the font file
-		fontFile, err := os.ReadFile("assets/fonts/" + opts.fontFile)
+		fontFile, err := os.ReadFile(filepath.Join(opts.FontDir, opts.fontFile))
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
 		// print the font file to the svg
 		_, _ = fmt.Fprintln(canvas.Writer, "<style>")
@@ -449,7 +467,7 @@ func generateSVG(opts avatarGenerator) bytes.Buffer {
 	// end the canvas
 	canvas.End()
 
-	return buffer
+	return buffer, nil
 }
 
 // downloadFile will download an url to a local file. It's efficient because it will

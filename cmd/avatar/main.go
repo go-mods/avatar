@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/go-mods/avatar"
@@ -11,8 +12,15 @@ import (
 	"time"
 )
 
+// FontDir is the directory for storing font files
+var fontDir string
+
 // Http server for avatar generation
 func main() {
+	// Add flag for font directory
+	flag.StringVar(&fontDir, "fontdir", "", "Directory to store font files")
+	flag.Parse()
+
 	// Create a new router
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.Default()
@@ -131,6 +139,9 @@ func avatarHandler(ctx *gin.Context) {
 	if fontColor != "" {
 		svgOptions = append(svgOptions, avatar.WithFontColor(fontColor))
 	}
+	if fontDir != "" {
+		svgOptions = append(svgOptions, avatar.WithFontDir(fontDir))
+	}
 	if shape != "" {
 		svgOptions = append(svgOptions, avatar.WithShape(shape))
 	}
@@ -175,7 +186,13 @@ func avatarHandler(ctx *gin.Context) {
 	initial := initials.GetInitials(name, initialsOptions...)
 
 	// Generate the avatar
-	svg := avatar.GetSVG(initial, svgOptions...)
+	svg, err := avatar.GetSVG(initial, svgOptions...)
+
+	// Check for errors
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 
 	// Return the avatar
 	ctx.Data(http.StatusOK, "image/svg+xml", svg.Bytes())

@@ -1,5 +1,5 @@
 # Start from golang base image to build the server
-FROM golang:1.20-alpine as builder
+FROM golang:1.23-alpine as builder
 
 # Tools needed to compile
 RUN apk update && apk add --no-cache git make
@@ -23,7 +23,7 @@ RUN go build -o bin/ ./...
 
 
 # Start a new stage from scratch
-FROM alpine:3.18
+FROM alpine:3.20
 
 # Define working dir
 WORKDIR /avatar
@@ -38,4 +38,4 @@ RUN chmod +x avatar
 EXPOSE 8080
 
 # Command to run the executable
-CMD ["./avatar"]
+CMD ["./avatar", "--fontdir", "assets/fonts"]
