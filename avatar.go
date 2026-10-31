@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	svg "github.com/ajstarks/svgo"
 	"github.com/lucasb-eyer/go-colorful"
@@ -471,11 +472,15 @@ func generateSVG(opts avatarGenerator) (*bytes.Buffer, error) {
 	return buffer, nil
 }
 
+// httpClient is used to download the font files; the timeout prevents a slow or
+// unresponsive server from blocking the generation indefinitely.
+var httpClient = &http.Client{Timeout: 30 * time.Second}
+
 // downloadFile will download an url to a local file. It's efficient because it will
 // write as it downloads and not load the whole file into memory.
 func downloadFile(filepath string, url string) error {
 	// Get the data
-	resp, err := http.Get(url) // #nosec:G107
+	resp, err := httpClient.Get(url) // #nosec:G107
 	if err != nil {
 		return err
 	}
