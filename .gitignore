@@ -151,3 +151,6 @@ assets/
 
 # todo files
 *todo*
+
+# Task cache (checksums of sources)
+.task/checksum/

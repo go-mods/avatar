@@ -2,12 +2,14 @@ package main
 
 import (
 	"fmt"
-	"github.com/go-mods/avatar"
-	"github.com/go-mods/initials"
 	"image"
 	"image/draw"
 	"image/png"
 	"os"
+
+	"github.com/go-mods/initials"
+
+	"github.com/go-mods/avatar"
 )
 
 var names = []string{"Abdul Zahir",

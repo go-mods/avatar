@@ -2,14 +2,16 @@ package main
 
 import (
 	"flag"
-	"github.com/gin-contrib/cors"
-	"github.com/gin-gonic/gin"
-	"github.com/go-mods/avatar"
-	"github.com/go-mods/initials"
 	"log"
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
+	"github.com/go-mods/initials"
+
+	"github.com/go-mods/avatar"
 )
 
 // FontDir is the directory for storing font files

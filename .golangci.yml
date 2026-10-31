@@ -1,0 +1,42 @@
+# golangci-lint (v2) configuration
+# Used by task go:lint (golangci-lint run) and task go:fmt (golangci-lint fmt).
+version: "2"
+
+run:
+  concurrency: 4
+  allow-parallel-runners: true
+
+linters:
+  default: standard        # errcheck, govet, ineffassign, staticcheck, unused
+  enable:
+    - errorlint            # errors.Is / errors.As instead of == and type assertions
+    - gosec                # security analysis: no separate gosec binary (#nosec honoured)
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - path: _test\.go    # gosec: test files excluded
+        linters: [gosec]
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/go-mods/avatar
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

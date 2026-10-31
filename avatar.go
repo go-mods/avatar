@@ -178,7 +178,7 @@ func WithBackgroundColorFunc(backgroundColorFunc ColorFunc) GeneratorOption {
 // WithFont sets the font of the svg
 func WithFont(family string, weight int) GeneratorOption {
 	return func(opts *avatarGenerator) {
-		familyEscaped := strings.Replace(family, ` `, `+`, -1)
+		familyEscaped := strings.ReplaceAll(family, ` `, `+`)
 		opts.FontFamily = family
 		opts.FontWeight = weight
 		opts.fontUrl = fmt.Sprintf("https://fonts.googleapis.com/css?family=%s:%d", familyEscaped, weight)
@@ -219,15 +219,16 @@ func WithShape(shape string) GeneratorOption {
 	return func(opts *avatarGenerator) {
 		opts.Shape = shape
 
-		if opts.Shape == "" {
+		switch opts.Shape {
+		case "":
 			opts.Shape = "circle"
-		} else if opts.Shape == "circle" {
+		case "circle":
 			opts.Shape = "circle"
-		} else if opts.Shape == "square" {
+		case "square":
 			opts.Shape = "rect"
-		} else if opts.Shape == "rect" {
+		case "rect":
 			opts.Shape = "rect"
-		} else {
+		default:
 			opts.Shape = "circle"
 		}
 	}

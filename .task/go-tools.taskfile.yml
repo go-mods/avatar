@@ -1,0 +1,126 @@
+# Taskfile for the Go development tools
+# Documentation: https://taskfile.dev
+#
+# Each tool is installed by `go install` at the version pinned below, never @latest.
+# The tasks of go.taskfile.yml call `check-<tool>` before using a tool: they fail if
+# the tool is missing or if its installed version differs from the pinned version.
+#
+# Usage:
+#   task go-tools:install                       # Install every tool
+#   task go-tools:install-editorconfig-checker  # EditorConfig validation
+#   task go-tools:install-golangci-lint         # Linter and formatter (gofmt, goimports)
+#   task go-tools:check                         # Check the installed versions (fails on mismatch)
+#   task go-tools:versions                      # Show the installed versions
+#
+# Tools:
+#   - editorconfig-checker: EditorConfig rules validation
+#   - golangci-lint: Go linters (gosec included) and formatters declared in .golangci.yml
+#
+# To upgrade a tool, change its version below, then run task go-tools:install.
+version: '3'
+
+vars:
+  EDITORCONFIG_CHECKER_VERSION: v3.11.3
+  GOLANGCI_LINT_VERSION: v2.15.0
+
+tasks:
+
+  default:
+    desc: "Installs every tool"
+    cmds:
+      - task: install
+    silent: true
+
+  install:
+    desc: "Installs or updates every third-party tool at its pinned version"
+    cmds:
+      - echo "Installing development tools..."
+      - task: install-editorconfig-checker
+      - task: install-golangci-lint
+      - task: check
+    silent: true
+
+  # Checks the compliance of the files with the EditorConfig rules
+  install-editorconfig-checker:
+    desc: "Installs or updates editorconfig-checker"
+    cmds:
+      - task: install-tool
+        vars:
+          TOOL: editorconfig-checker
+          PACKAGE: github.com/editorconfig-checker/editorconfig-checker/v3/cmd/editorconfig-checker
+          VERSION: "{{.EDITORCONFIG_CHECKER_VERSION}}"
+    silent: true
+
+  # Go linters; also formats the code (golangci-lint fmt) with the formatters of .golangci.yml
+  install-golangci-lint:
+    desc: "Installs or updates golangci-lint"
+    cmds:
+      - task: install-tool
+        vars:
+          TOOL: golangci-lint
+          PACKAGE: github.com/golangci/golangci-lint/v2/cmd/golangci-lint
+          VERSION: "{{.GOLANGCI_LINT_VERSION}}"
+    silent: true
+
+  check:
+    desc: "Checks that every tool is installed at its pinned version (fails on mismatch)"
+    cmds:
+      - task: check-editorconfig-checker
+      - task: check-golangci-lint
+      - echo "Tools installed at their pinned versions"
+    silent: true
+
+  check-editorconfig-checker:
+    desc: "Checks the installed version of editorconfig-checker"
+    cmds:
+      - task: check-tool
+        vars: { TOOL: editorconfig-checker, VERSION: "{{.EDITORCONFIG_CHECKER_VERSION}}" }
+    silent: true
+
+  check-golangci-lint:
+    desc: "Checks the installed version of golangci-lint"
+    cmds:
+      - task: check-tool
+        vars: { TOOL: golangci-lint, VERSION: "{{.GOLANGCI_LINT_VERSION}}" }
+    silent: true
+
+  versions:
+    desc: "Shows the versions of Go, Task and the installed tools"
+    cmds:
+      - go version || echo "Go is not installed"
+      - echo "task $(task --version 2>/dev/null || echo 'not installed')"
+      - for: [editorconfig-checker, golangci-lint]
+        cmd: 'if command -v {{.ITEM}} >/dev/null 2>&1; then echo "{{.ITEM}} $(go version -m "$(command -v {{.ITEM}})" | awk ''$1=="mod"{print $3}'')"; else echo "{{.ITEM}} not installed"; fi'
+    silent: true
+
+  # ------------------------------------------------------------------------------
+  # Internal helpers
+  # ------------------------------------------------------------------------------
+
+  # Installs a Go tool at its pinned version
+  install-tool:
+    internal: true
+    requires:
+      vars: [TOOL, PACKAGE, VERSION]
+    preconditions:
+      - sh: "go version"
+        msg: "Go is not installed"
+    cmds:
+      - echo "Installing {{.TOOL}} {{.VERSION}}..."
+      - go install {{.PACKAGE}}@{{.VERSION}}
+    silent: true
+
+  # Checks that a tool is installed at its pinned version
+  # The version is read from the binary (go version -m), whatever the format of --version
+  check-tool:
+    internal: true
+    requires:
+      vars: [TOOL, VERSION]
+    preconditions:
+      - sh: "command -v {{.TOOL}}"
+        msg: "{{.TOOL}} is not installed. Run 'task go-tools:install-{{.TOOL}}'"
+      - sh: '[ "$(go version -m "$(command -v {{.TOOL}})" | awk ''$1=="mod"{print $3}'')" = "{{.VERSION}}" ]'
+        msg: "{{.TOOL}} is not at the pinned version {{.VERSION}}. Run 'task go-tools:install-{{.TOOL}}'"
+    cmds:
+      - "true"
+    silent: true
