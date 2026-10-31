@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"log"
 	"net/http"
@@ -190,9 +191,14 @@ func avatarHandler(ctx *gin.Context) {
 	// Generate the avatar
 	svg, err := avatar.GetSVG(initial, svgOptions...)
 
-	// Check for errors
+	// Check for errors: an invalid option is an error of the request
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		status := http.StatusInternalServerError
+		if errors.Is(err, avatar.ErrInvalidFontFamily) || errors.Is(err, avatar.ErrInvalidFontWeight) ||
+			errors.Is(err, avatar.ErrInvalidBorderDash) {
+			status = http.StatusBadRequest
+		}
+		ctx.JSON(status, gin.H{"error": err.Error()})
 		return
 	}
 

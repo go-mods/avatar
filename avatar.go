@@ -7,14 +7,37 @@ import (
 	"io"
 	"math"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
 	svg "github.com/ajstarks/svgo"
 	"github.com/lucasb-eyer/go-colorful"
 	"golang.org/x/image/colornames"
+)
+
+var (
+	// ErrInvalidFontFamily is returned when the font family holds other characters than ASCII letters,
+	// digits and spaces, the characters of the Google Fonts family names
+	ErrInvalidFontFamily = errors.New("invalid font family")
+
+	// ErrInvalidFontWeight is returned when the font weight is not between 1 and 1000
+	ErrInvalidFontWeight = errors.New("invalid font weight")
+
+	// ErrInvalidBorderDash is returned when the border dash is neither "none" nor a list of numbers
+	ErrInvalidBorderDash = errors.New("invalid border dash")
+)
+
+var (
+	// fontFamilyRegex matches a Google Fonts family name: "Inter", "Roboto Mono", "M PLUS 1p".
+	// The family is used in a file name, an url and the svg style: nothing else is accepted.
+	fontFamilyRegex = regexp.MustCompile(`^[A-Za-z0-9 ]+$`)
+
+	// borderDashRegex matches a stroke-dasharray value: "none", "5", "5,5", "6 2", "1.5 3"
+	borderDashRegex = regexp.MustCompile(`^(none|\d+(\.\d+)?([ ,]+\d+(\.\d+)?)*)$`)
 )
 
 // avatarGenerator is a struct to hold the options for the avatar generator
@@ -108,7 +131,8 @@ type avatarGenerator struct {
 // GeneratorOption is a function to set the avatarGenerator options
 type GeneratorOption func(*avatarGenerator)
 
-// GetSVG returns the svg of a name
+// GetSVG returns the svg of a name.
+// It returns ErrInvalidFontFamily, ErrInvalidFontWeight or ErrInvalidBorderDash when an option is not valid.
 func GetSVG(initials string, options ...GeneratorOption) (*bytes.Buffer, error) {
 
 	// Set the default avatar generator options
@@ -176,13 +200,13 @@ func WithBackgroundColorFunc(backgroundColorFunc ColorFunc) GeneratorOption {
 	}
 }
 
-// WithFont sets the font of the svg
+// WithFont sets the font of the svg, a Google Fonts family and a weight between 1 and 1000.
+// The font is downloaded once into the font directory.
 func WithFont(family string, weight int) GeneratorOption {
 	return func(opts *avatarGenerator) {
-		familyEscaped := strings.ReplaceAll(family, ` `, `+`)
 		opts.FontFamily = family
 		opts.FontWeight = weight
-		opts.fontUrl = fmt.Sprintf("https://fonts.googleapis.com/css?family=%s:%d", familyEscaped, weight)
+		opts.fontUrl = fmt.Sprintf("https://fonts.googleapis.com/css?family=%s:%d", url.QueryEscape(family), weight)
 		opts.fontFile = fmt.Sprintf("%s-%d", family, weight)
 	}
 }
@@ -235,7 +259,7 @@ func WithShape(shape string) GeneratorOption {
 	}
 }
 
-// WithBorderDash sets the border style
+// WithBorderDash sets the border style: "none" or a list of numbers ("5,5", "6 2")
 func WithBorderDash(borderDash string) GeneratorOption {
 	return func(opts *avatarGenerator) {
 		opts.BorderDash = borderDash
@@ -316,6 +340,10 @@ func WithRandomBorderColor() GeneratorOption {
 
 // generateSVG generates the svg
 func generateSVG(opts avatarGenerator) (*bytes.Buffer, error) {
+	// The font family and the border dash are written to files, urls and the svg: reject unexpected values
+	if err := validate(opts); err != nil {
+		return nil, err
+	}
 
 	// buffer to write the svg to
 	var buffer = new(bytes.Buffer)
@@ -472,15 +500,33 @@ func generateSVG(opts avatarGenerator) (*bytes.Buffer, error) {
 	return buffer, nil
 }
 
+// validate checks the options which are not converted to a safe value before being used
+func validate(opts avatarGenerator) error {
+	if opts.FontFamily != "" {
+		if !fontFamilyRegex.MatchString(opts.FontFamily) {
+			return fmt.Errorf("%w: %q", ErrInvalidFontFamily, opts.FontFamily)
+		}
+		if opts.FontWeight < 1 || opts.FontWeight > 1000 {
+			return fmt.Errorf("%w: %d", ErrInvalidFontWeight, opts.FontWeight)
+		}
+	}
+	if !borderDashRegex.MatchString(opts.BorderDash) {
+		return fmt.Errorf("%w: %q", ErrInvalidBorderDash, opts.BorderDash)
+	}
+	return nil
+}
+
 // httpClient is used to download the font files; the timeout prevents a slow or
 // unresponsive server from blocking the generation indefinitely.
 var httpClient = &http.Client{Timeout: 30 * time.Second}
 
 // downloadFile will download an url to a local file. It's efficient because it will
 // write as it downloads and not load the whole file into memory.
-func downloadFile(filepath string, url string) error {
+// Nothing is kept when the server does not answer 200 OK or when the download fails,
+// so that an error page or a partial file is never used as a font.
+func downloadFile(path string, fileURL string) error {
 	// Get the data
-	resp, err := httpClient.Get(url) // #nosec:G107
+	resp, err := httpClient.Get(fileURL) // #nosec G107 -- the url is built by WithFont from a validated family
 	if err != nil {
 		return err
 	}
@@ -488,17 +534,24 @@ func downloadFile(filepath string, url string) error {
 		_ = Body.Close()
 	}(resp.Body)
 
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("download %s: %s", fileURL, resp.Status)
+	}
+
 	// Create the file
-	out, err := os.Create(filepath) // #nosec:G304
+	out, err := os.Create(path) // #nosec G304 -- the file name is built from a validated family
 	if err != nil {
 		return err
 	}
-	defer func(out *os.File) {
-		_ = out.Close()
-	}(out)
 
 	// Write the body to file
 	_, err = io.Copy(out, resp.Body)
+	if closeErr := out.Close(); err == nil {
+		err = closeErr
+	}
+	if err != nil {
+		_ = os.Remove(path)
+	}
 	return err
 }
 
