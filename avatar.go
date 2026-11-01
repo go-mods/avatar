@@ -74,9 +74,12 @@ const (
 		`     xmlns="http://www.w3.org/2000/svg"` + "\n" +
 		`     xmlns:xlink="http://www.w3.org/1999/xlink">` + "\n"
 
-	// svgTextStart starts the text: x, y, font family, font size and color. These are attributes
+	// svgTextStart starts the text: x, y, font family, font size, color and font weight. These are attributes
 	// and not a style: the style of an svg inlined in a page applies to the whole page.
-	svgTextStart = `<text x="%d" y="%d" text-anchor="middle" font-family="%s" font-size="%d" fill="%s">`
+	svgTextStart = `<text x="%d" y="%d" text-anchor="middle" font-family="%s" font-size="%d" fill="%s"%s>`
+
+	// regularFontWeight is the weight of a text which does not ask for another one
+	regularFontWeight = 400
 
 	// The shapes of the svg
 	shapeCircle = "circle"
@@ -178,7 +181,7 @@ func GetSVGContext(ctx context.Context, initials string, options ...GeneratorOpt
 		initials:   initials,
 		width:      48,
 		height:     48,
-		fontWeight: 400,
+		fontWeight: regularFontWeight,
 		shape:      shapeCircle,
 		borderDash: "none",
 	}
@@ -226,7 +229,8 @@ func WithBackgroundColorFunc(backgroundColorFunc ColorFunc) GeneratorOption {
 	}
 }
 
-// WithFont sets the font of the svg, a Google Fonts family and a weight between 1 and 1000.
+// WithFont sets the font of the svg, a Google Fonts family and a weight between 1 and 1000. An empty
+// family keeps the fallback font, with this weight.
 // The font is embedded in the svg, reduced to the letters of the initials: it is displayed even when
 // the svg is an image. It is downloaded once for each family, weight and initials into the font directory.
 func WithFont(family string, weight int) GeneratorOption {
@@ -451,7 +455,7 @@ func generateSVG(ctx context.Context, opts avatarGenerator) (*bytes.Buffer, erro
 	// set the text
 	if opts.initials != "" {
 		_, _ = fmt.Fprintf(buffer, svgTextStart, opts.width/2, opts.height/2+opts.fontHeight/4,
-			fontFamilyList(opts.fontFamily), opts.fontSize, opts.fontColor)
+			fontFamilyList(opts.fontFamily), opts.fontSize, opts.fontColor, fontWeightAttribute(opts.fontWeight))
 		// The initials come from the caller: they are escaped to stay plain text
 		_ = xml.EscapeText(buffer, []byte(opts.initials))
 		buffer.WriteString("</text>\n")
@@ -470,9 +474,9 @@ func validate(opts avatarGenerator) error {
 			!fontFamilyRegex.MatchString(opts.fontFamily) {
 			return fmt.Errorf("%w: %q", ErrInvalidFontFamily, opts.fontFamily)
 		}
-		if opts.fontWeight < 1 || opts.fontWeight > 1000 {
-			return fmt.Errorf("%w: %d", ErrInvalidFontWeight, opts.fontWeight)
-		}
+	}
+	if opts.fontWeight < 1 || opts.fontWeight > 1000 {
+		return fmt.Errorf("%w: %d", ErrInvalidFontWeight, opts.fontWeight)
 	}
 	if !borderDashRegex.MatchString(opts.borderDash) {
 		return fmt.Errorf("%w: %q", ErrInvalidBorderDash, opts.borderDash)
@@ -538,6 +542,14 @@ func generatedColors(opts avatarGenerator, cr *ColorGenerator) (background, text
 		border = cr.BorderColorFunc(randomSeed())
 	}
 	return background, text, border
+}
+
+// fontWeightAttribute returns the attribute of a font weight: the regular weight needs none
+func fontWeightAttribute(weight int) string {
+	if weight == regularFontWeight {
+		return ""
+	}
+	return fmt.Sprintf(` font-weight="%d"`, weight)
 }
 
 // resolveColor returns the hex code of a color, or of the generated color when no color is given

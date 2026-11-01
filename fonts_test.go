@@ -132,6 +132,15 @@ func TestGetSVG_withoutAFontToDownload(t *testing.T) {
 	}
 }
 
+func TestGetSVG_fontWeightMatchesTheFont(t *testing.T) {
+	newFontServer(t)
+
+	svg, err := GetSVG("AB", WithFont("Inter", 900), WithFontDir(t.TempDir()))
+
+	require.NoError(t, err)
+	assert.Contains(t, svg.String(), `font-weight="900">AB`)
+}
+
 func TestGetSVG_fontWithoutTheLetters(t *testing.T) {
 	server := newFontServer(t)
 	server.font = func(w http.ResponseWriter, _ *http.Request) {

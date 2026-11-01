@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -37,6 +38,7 @@ func TestAvatarRoute(t *testing.T) {
 		{name: "width", target: "/api?width=100", want: `<svg width="100" height="48"`},
 		{name: "height", target: "/api?height=100", want: `<svg width="48" height="100"`},
 		{name: "font size", target: "/api?name=JD&fontSize=30", want: `font-size="30"`},
+		{name: "font weight without family", target: "/api?name=JD&fontWeight=700", want: `font-weight="700">JD`},
 		{name: "background color", target: "/api?backgroundColor=red", want: `fill="#ff0000"`},
 		{name: "font color", target: "/api?name=JD&fontColor=red", want: `fill="#ff0000">JD`},
 		{name: "border color", target: "/api?borderColor=red", want: `stroke="#ff0000"`},
@@ -170,6 +172,44 @@ func TestWriteError(t *testing.T) {
 	}
 }
 
+func TestPageRoute(t *testing.T) {
+	response := get(t, "/")
+
+	assert.Equal(t, http.StatusOK, response.Code)
+	assert.Equal(t, "text/html; charset=utf-8", response.Header().Get("Content-Type"))
+	assert.Equal(t, "no-cache", response.Header().Get("Cache-Control"))
+	assert.Equal(t, "nosniff", response.Header().Get("X-Content-Type-Options"))
+	assert.Equal(t, pageContentSecurityPolicy, response.Header().Get("Content-Security-Policy"))
+	assert.Contains(t, response.Body.String(), "<title>avatar</title>")
+}
+
+func TestAssetRoute(t *testing.T) {
+	page := get(t, "/").Body.String()
+	script := regexp.MustCompile(`src="(/assets/[^"]+\.js)"`).FindStringSubmatch(page)
+	require.NotNil(t, script, "page: %s", page)
+	style := regexp.MustCompile(`href="(/assets/[^"]+\.css)"`).FindStringSubmatch(page)
+	require.NotNil(t, style, "page: %s", page)
+
+	for _, target := range []struct{ path, contentType string }{
+		{script[1], "text/javascript"},
+		{style[1], "text/css"},
+	} {
+		response := get(t, target.path)
+
+		assert.Equal(t, http.StatusOK, response.Code, target.path)
+		assert.Contains(t, response.Header().Get("Content-Type"), target.contentType)
+		assert.Equal(t, "public, max-age=31536000, immutable", response.Header().Get("Cache-Control"))
+		assert.Equal(t, "nosniff", response.Header().Get("X-Content-Type-Options"))
+		assert.NotEmpty(t, response.Body.String())
+	}
+}
+
+func TestAssetRoute_missingFile(t *testing.T) {
+	assert.Equal(t, http.StatusNotFound, get(t, "/assets/missing.js").Code)
+	assert.Equal(t, http.StatusNotFound, get(t, "/assets/../web.go").Code)
+	assert.Equal(t, http.StatusNotFound, get(t, "/missing").Code)
+}
+
 func TestHealthRoute(t *testing.T) {
 	response := get(t, "/health")
 
@@ -177,6 +217,24 @@ func TestHealthRoute(t *testing.T) {
 	var body map[string]string
 	require.NoError(t, json.Unmarshal(response.Body.Bytes(), &body))
 	assert.Equal(t, "ok", body["status"])
+}
+
+func TestBrowserURL(t *testing.T) {
+	tests := []struct {
+		addr net.Addr
+		want string
+	}{
+		{addr: &net.TCPAddr{IP: net.IPv6unspecified, Port: 8080}, want: "http://localhost:8080"},
+		{addr: &net.TCPAddr{IP: net.IPv4zero, Port: 9000}, want: "http://localhost:9000"},
+		{addr: &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1), Port: 9000}, want: "http://127.0.0.1:9000"},
+		{addr: &net.TCPAddr{IP: net.IPv4(192, 168, 1, 10), Port: 80}, want: "http://192.168.1.10:80"},
+		{addr: &net.TCPAddr{IP: net.IPv6loopback, Port: 9000}, want: "http://[::1]:9000"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.addr.String(), func(t *testing.T) {
+			assert.Equal(t, tt.want, browserURL(tt.addr))
+		})
+	}
 }
 
 func TestHealthURL(t *testing.T) {

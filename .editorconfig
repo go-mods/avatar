@@ -20,3 +20,10 @@ eclint_indent_style = unset
 
 [Dockerfile]
 indent_size = 4
+
+# The built page is generated
+[cmd/avatar/web/dist/**]
+insert_final_newline = unset
+indent_style = unset
+indent_size = unset
+trim_trailing_whitespace = unset

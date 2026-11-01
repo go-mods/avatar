@@ -2,6 +2,8 @@ module github.com/go-mods/avatar
 
 go 1.26.10
 
+ignore ./cmd/avatar/web/node_modules
+
 require (
 	github.com/gin-contrib/cors v1.7.10
 	github.com/gin-gonic/gin v1.12.0

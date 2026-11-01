@@ -10,5 +10,7 @@ includes:
   go: ./.task/go.taskfile.yml
   # Go development tools, installed at pinned versions
   go-tools: ./.task/go-tools.taskfile.yml
+  # Tasks of the page of the server (Vue, TypeScript, Tailwind CSS)
+  web: ./.task/web.taskfile.yml
   # Tasks related to Docker (build, start, stop the avatar server)
   docker: ./.task/docker.taskfile.yml

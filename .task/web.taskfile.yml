@@ -1,0 +1,56 @@
+# Taskfile for the page of the server (Vue, TypeScript, Tailwind CSS)
+# Documentation: https://taskfile.dev
+#
+# The built page (cmd/avatar/web/dist) is versioned and embedded in the server, so that the server
+# builds without Node. Run task web:build after changing the page, and commit the result.
+#
+# Usage:
+#   task web:install   # Install the dependencies from the lockfile
+#   task web:dev       # Serve the page with live reload (the Go server answers /api on port 8080)
+#   task web:test      # Run the tests of the page
+#   task web:build     # Check the types and build the page
+#   task web:check     # Fail if the built page differs from its sources
+version: '3'
+
+vars:
+  WEB_DIR: cmd/avatar/web
+
+tasks:
+
+  install:
+    desc: "Installs the dependencies of the page from its lockfile"
+    dir: "{{.WEB_DIR}}"
+    cmds:
+      - npm ci
+    silent: true
+
+  dev:
+    desc: "Serves the page with live reload; the Go server must answer /api on port 8080"
+    dir: "{{.WEB_DIR}}"
+    interactive: true
+    cmds:
+      - npm run dev
+    silent: true
+
+  test:
+    desc: "Runs the tests of the page"
+    dir: "{{.WEB_DIR}}"
+    cmds:
+      - npm test
+    silent: true
+
+  build:
+    desc: "Checks the types and builds the page embedded in the server"
+    dir: "{{.WEB_DIR}}"
+    cmds:
+      - echo "Building the page..."
+      - npm run build
+    silent: true
+
+  check:
+    desc: "Builds the page and fails if the result differs from the versioned one"
+    cmds:
+      - task: build
+      - git diff --exit-code --stat -- {{.WEB_DIR}}/dist
+      - test -z "$(git ls-files --others --exclude-standard -- {{.WEB_DIR}}/dist)"
+    silent: true

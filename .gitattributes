@@ -1,3 +1,6 @@
 # LF line endings for every text file, whatever core.autocrlf is set to
 # (.editorconfig requires end_of_line = lf and editorconfig-checker verifies it)
 * text=auto eol=lf
+
+# The built page is generated: its diff is not read
+cmd/avatar/web/dist/** linguist-generated=true

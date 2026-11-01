@@ -1,7 +1,7 @@
 // Command avatar is an http server which generates svg avatars.
 //
-// GET /api returns the avatar described by its query parameters, GET /health tells that the server
-// is running. Without argument, the command starts the server; "avatar healthcheck" asks a running
+// GET / presents the project and tries the avatars live, GET /api returns the avatar described by its
+// query parameters, GET /health tells that the server is running. Without argument, the command starts the server; "avatar healthcheck" asks a running
 // server for its health, and exits with an error if it does not answer.
 package main
 
@@ -76,8 +76,21 @@ func run(ctx context.Context, addr, fontDir string) error {
 	if err != nil {
 		return err
 	}
-	log.Printf("Server started on %s", listener.Addr())
+	log.Printf("Server started on %s", browserURL(listener.Addr()))
 	return serve(ctx, newServer(addr, fontDir), listener)
+}
+
+// browserURL returns the url to open in a browser: a terminal makes it clickable. An address which
+// listens on every interface, like [::]:8080, cannot be opened as is.
+func browserURL(addr net.Addr) string {
+	host, port, err := net.SplitHostPort(addr.String())
+	if err != nil {
+		return addr.String()
+	}
+	if ip := net.ParseIP(host); ip != nil && ip.IsUnspecified() {
+		host = "localhost"
+	}
+	return "http://" + net.JoinHostPort(host, port)
 }
 
 // serve answers the requests until the context is done, then lets the running requests finish
@@ -117,6 +130,7 @@ func newRouter(fontDir string) *gin.Engine {
 	router := gin.Default()
 	router.Use(cors.Default())
 
+	addPageRoutes(router)
 	router.GET("/api", avatarHandler(fontDir))
 	router.GET("/health", func(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, gin.H{"status": "ok"})
@@ -269,7 +283,7 @@ func (p *params) svgOptions() ([]avatar.GeneratorOption, bool) {
 	if !ok {
 		weight = 400
 	}
-	if family := p.ctx.Query("fontFamily"); family != "" {
+	if family := p.ctx.Query("fontFamily"); family != "" || ok {
 		options = append(options, avatar.WithFont(family, weight))
 	}
 

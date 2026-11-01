@@ -147,10 +147,13 @@ fabric.properties
 coverage.*
 
 # assets folder
-assets/
+/assets/
 
 # todo files
 *todo*
 
 # Task cache (checksums of sources)
 .task/checksum/
+
+# Dependencies of the web page
+node_modules
