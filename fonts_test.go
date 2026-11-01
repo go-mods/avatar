@@ -163,7 +163,7 @@ func TestGetSVG_rejectsAnUnknownFont(t *testing.T) {
 
 	svg, err := GetSVG("AB", WithFont("NoSuchFamily", 400), WithFontDir(dir))
 
-	require.ErrorContains(t, err, "400 Bad Request")
+	require.ErrorIs(t, err, ErrUnknownFont)
 	assert.Nil(t, svg)
 	entries, err := os.ReadDir(dir)
 	require.NoError(t, err)

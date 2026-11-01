@@ -96,6 +96,10 @@ func fontCacheFile(family string, weight int, initials string) string {
 func downloadFontStyle(ctx context.Context, family string, weight int, initials string) (string, error) {
 	styleURL := fmt.Sprintf("%s?family=%s:%d&text=%s", fontCSSURL, url.QueryEscape(family), weight, url.QueryEscape(initials))
 	content, err := download(ctx, styleURL)
+	var refused *statusError
+	if errors.As(err, &refused) && refused.code == http.StatusBadRequest {
+		return "", fmt.Errorf("%w: %s %d", ErrUnknownFont, family, weight)
+	}
 	if err != nil {
 		return "", err
 	}

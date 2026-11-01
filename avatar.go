@@ -38,6 +38,9 @@ var (
 	// ErrInvalidFontWeight is returned when the font weight is not between 1 and 1000
 	ErrInvalidFontWeight = errors.New("invalid font weight")
 
+	// ErrUnknownFont is returned when Google Fonts holds neither this family nor this weight
+	ErrUnknownFont = errors.New("unknown font")
+
 	// ErrInvalidBorderDash is returned when the border dash is neither "none" nor a list of numbers
 	ErrInvalidBorderDash = errors.New("invalid border dash")
 
@@ -161,7 +164,8 @@ type GeneratorOption func(*avatarGenerator)
 
 // GetSVG returns the svg of initials.
 // It returns ErrInvalidFontFamily, ErrInvalidFontWeight, ErrInvalidBorderDash, ErrInvalidSize,
-// ErrInvalidColor or ErrInvalidShape when an option is not valid.
+// ErrInvalidColor or ErrInvalidShape when an option is not valid, and ErrUnknownFont when the font
+// does not exist.
 func GetSVG(initials string, options ...GeneratorOption) (*bytes.Buffer, error) {
 	return GetSVGContext(context.Background(), initials, options...)
 }
