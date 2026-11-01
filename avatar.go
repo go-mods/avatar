@@ -2,17 +2,13 @@ package avatar
 
 import (
 	"bytes"
+	"context"
 	"encoding/xml"
 	"errors"
 	"fmt"
-	"io"
-	"net/http"
-	"net/url"
 	"os"
-	"path/filepath"
 	"regexp"
 	"strings"
-	"time"
 
 	"github.com/lucasb-eyer/go-colorful"
 	"golang.org/x/image/colornames"
@@ -20,7 +16,7 @@ import (
 
 var (
 	// ErrInvalidFontFamily is returned when the font family holds other characters than ASCII letters,
-	// digits and spaces, the characters of the Google Fonts family names
+	// digits and inner spaces, the characters of the Google Fonts family names, or when it is too long
 	ErrInvalidFontFamily = errors.New("invalid font family")
 
 	// ErrInvalidFontWeight is returned when the font weight is not between 1 and 1000
@@ -83,15 +79,6 @@ type avatarGenerator struct {
 	// FontWeight is the font weight
 	FontWeight int
 
-	// FontUrl is the font url where the font file is located
-	// It is used to download the font file from the google font api
-	// It is constructed from FontFamily and FontWeight
-	fontUrl string
-
-	// FontFile is the font file of the svg
-	// it is constructed from FontFamily and FontWeight
-	fontFile string
-
 	// FontSize is the font size of the svg
 	FontSize int
 
@@ -153,6 +140,11 @@ type GeneratorOption func(*avatarGenerator)
 // It returns ErrInvalidFontFamily, ErrInvalidFontWeight, ErrInvalidBorderDash, ErrInvalidSize or
 // ErrInvalidColor when an option is not valid.
 func GetSVG(initials string, options ...GeneratorOption) (*bytes.Buffer, error) {
+	return GetSVGContext(context.Background(), initials, options...)
+}
+
+// GetSVGContext is GetSVG with a context, which stops the download of the font.
+func GetSVGContext(ctx context.Context, initials string, options ...GeneratorOption) (*bytes.Buffer, error) {
 
 	// Set the default avatar generator options
 	opts := avatarGenerator{
@@ -182,7 +174,7 @@ func GetSVG(initials string, options ...GeneratorOption) (*bytes.Buffer, error) 
 	}
 
 	// Generate the svg
-	return generateSVG(opts)
+	return generateSVG(ctx, opts)
 }
 
 // WithWidth sets the width of the svg
@@ -220,13 +212,12 @@ func WithBackgroundColorFunc(backgroundColorFunc ColorFunc) GeneratorOption {
 }
 
 // WithFont sets the font of the svg, a Google Fonts family and a weight between 1 and 1000.
-// The font is downloaded once into the font directory.
+// The font is embedded in the svg, reduced to the letters of the initials: it is displayed even when
+// the svg is an image. It is downloaded once for each family, weight and initials into the font directory.
 func WithFont(family string, weight int) GeneratorOption {
 	return func(opts *avatarGenerator) {
 		opts.FontFamily = family
 		opts.FontWeight = weight
-		opts.fontUrl = fmt.Sprintf("https://fonts.googleapis.com/css?family=%s:%d", url.QueryEscape(family), weight)
-		opts.fontFile = fmt.Sprintf("%s-%d", family, weight)
 	}
 }
 
@@ -358,7 +349,7 @@ func WithRandomBorderColor() GeneratorOption {
 }
 
 // generateSVG generates the svg
-func generateSVG(opts avatarGenerator) (*bytes.Buffer, error) {
+func generateSVG(ctx context.Context, opts avatarGenerator) (*bytes.Buffer, error) {
 	// The options are written to files, urls and the svg: reject unexpected values
 	if err := validate(opts); err != nil {
 		return nil, err
@@ -405,19 +396,6 @@ func generateSVG(opts avatarGenerator) (*bytes.Buffer, error) {
 		opts.BorderDash = "none"
 	}
 
-	// if fontUrl and fontFile are both set, download the font and save it to the assets/fonts folder
-	if opts.fontUrl != "" && opts.fontFile != "" {
-		fontPath := filepath.Join(opts.FontDir, opts.fontFile)
-		// if the font file does not exist, download it
-		// else use the existing font file
-		if _, err := os.Stat(fontPath); os.IsNotExist(err) {
-			err := downloadFile(fontPath, opts.fontUrl)
-			if err != nil {
-				return nil, err
-			}
-		}
-	}
-
 	// set the font size
 	if opts.FontSize == 0 {
 		opts.fontHeight = min(opts.Width, opts.Height) * 3 / 5
@@ -426,19 +404,19 @@ func generateSVG(opts avatarGenerator) (*bytes.Buffer, error) {
 		opts.fontHeight = opts.FontSize * 16 / 12
 	}
 
-	// add the font file to the svg as a style
-	if opts.FontFamily != "" && opts.fontFile != "" {
-		// get the content of the font file
-		fontFile, err := os.ReadFile(filepath.Join(opts.FontDir, opts.fontFile))
+	// embed the font in the svg as a style: without text, there is nothing to draw with it
+	if opts.FontFamily != "" && opts.Initials != "" {
+		style, err := fontStyle(ctx, opts)
 		if err != nil {
 			return nil, err
 		}
-		// print the font file to the svg
-		_, _ = fmt.Fprintln(buffer, "<defs>")
-		_, _ = fmt.Fprintln(buffer, "<style>")
-		_, _ = fmt.Fprintln(buffer, string(fontFile))
-		_, _ = fmt.Fprintln(buffer, "</style>")
-		_, _ = fmt.Fprintln(buffer, "</defs>")
+		if style != "" {
+			_, _ = fmt.Fprintln(buffer, "<defs>")
+			_, _ = fmt.Fprintln(buffer, "<style>")
+			_, _ = fmt.Fprintln(buffer, style)
+			_, _ = fmt.Fprintln(buffer, "</style>")
+			_, _ = fmt.Fprintln(buffer, "</defs>")
+		}
 	}
 
 	// set the shape
@@ -489,7 +467,8 @@ func generateSVG(opts avatarGenerator) (*bytes.Buffer, error) {
 // validate checks the options which are not converted to a safe value before being used
 func validate(opts avatarGenerator) error {
 	if opts.FontFamily != "" {
-		if !fontFamilyRegex.MatchString(opts.FontFamily) {
+		if len(opts.FontFamily) > maxFontFamilyLength || strings.TrimSpace(opts.FontFamily) != opts.FontFamily ||
+			!fontFamilyRegex.MatchString(opts.FontFamily) {
 			return fmt.Errorf("%w: %q", ErrInvalidFontFamily, opts.FontFamily)
 		}
 		if opts.FontWeight < 1 || opts.FontWeight > 1000 {
@@ -548,45 +527,6 @@ func resolveColor(value string, generated colorful.Color) (string, error) {
 		return "", fmt.Errorf("%w: %q", ErrInvalidColor, value)
 	}
 	return color.Hex(), nil
-}
-
-// httpClient is used to download the font files; the timeout prevents a slow or
-// unresponsive server from blocking the generation indefinitely.
-var httpClient = &http.Client{Timeout: 30 * time.Second}
-
-// downloadFile will download an url to a local file. It's efficient because it will
-// write as it downloads and not load the whole file into memory.
-// Nothing is kept when the server does not answer 200 OK or when the download fails,
-// so that an error page or a partial file is never used as a font.
-func downloadFile(path string, fileURL string) error {
-	// Get the data
-	resp, err := httpClient.Get(fileURL) // #nosec G107 -- the url is built by WithFont from a validated family
-	if err != nil {
-		return err
-	}
-	defer func(Body io.ReadCloser) {
-		_ = Body.Close()
-	}(resp.Body)
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("download %s: %s", fileURL, resp.Status)
-	}
-
-	// Create the file
-	out, err := os.Create(path) // #nosec G304 -- the file name is built from a validated family
-	if err != nil {
-		return err
-	}
-
-	// Write the body to file
-	_, err = io.Copy(out, resp.Body)
-	if closeErr := out.Close(); err == nil {
-		err = closeErr
-	}
-	if err != nil {
-		_ = os.Remove(path)
-	}
-	return err
 }
 
 // colorFromString will return hex color from a string

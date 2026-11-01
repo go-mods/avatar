@@ -6,8 +6,6 @@ import (
 	"flag"
 	"io"
 	"math"
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -37,7 +35,7 @@ func requireWellFormed(t *testing.T, document string) {
 func TestGetSVG_output(t *testing.T) {
 	// The font file is already in the font directory: nothing is downloaded
 	fontDir := t.TempDir()
-	require.NoError(t, os.WriteFile(filepath.Join(fontDir, "Inter-400"), []byte("@font-face {}\n"), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(fontDir, fontCacheFile("Inter", 400, "IJ")), []byte("@font-face {}\n"), 0o600))
 
 	tests := []struct {
 		name     string
@@ -150,6 +148,9 @@ func TestGetSVG_rejectsUnsafeOptions(t *testing.T) {
 		{name: "windows separator in family", options: []GeneratorOption{WithFont(`a\b`, 400)}, want: ErrInvalidFontFamily},
 		{name: "markup in family", options: []GeneratorOption{WithFont("x}</style><script>alert(1)</script>", 400)}, want: ErrInvalidFontFamily},
 		{name: "url parameter in family", options: []GeneratorOption{WithFont("Inter&display=swap", 400)}, want: ErrInvalidFontFamily},
+		{name: "only spaces in family", options: []GeneratorOption{WithFont("   ", 400)}, want: ErrInvalidFontFamily},
+		{name: "space around family", options: []GeneratorOption{WithFont(" Inter ", 400)}, want: ErrInvalidFontFamily},
+		{name: "family too long", options: []GeneratorOption{WithFont(strings.Repeat("a", maxFontFamilyLength+1), 400)}, want: ErrInvalidFontFamily},
 		{name: "weight zero", options: []GeneratorOption{WithFont("Inter", 0)}, want: ErrInvalidFontWeight},
 		{name: "weight too high", options: []GeneratorOption{WithFont("Inter", 1001)}, want: ErrInvalidFontWeight},
 		{name: "attribute in border dash", options: []GeneratorOption{WithBorderDash(`1" onload="alert(1)`)}, want: ErrInvalidBorderDash},
@@ -181,7 +182,7 @@ func TestGetSVG_rejectsUnsafeOptions(t *testing.T) {
 			for _, d := range []string{dir, filepath.Dir(dir)} {
 				entries, _ := os.ReadDir(d)
 				for _, e := range entries {
-					assert.False(t, strings.HasSuffix(e.Name(), "-400") || strings.HasSuffix(e.Name(), "-weight"),
+					assert.False(t, strings.HasSuffix(e.Name(), fontCacheSuffix),
 						"file %s written in %s", e.Name(), d)
 				}
 			}
@@ -212,7 +213,8 @@ func TestGetSVG_acceptsValidOptions(t *testing.T) {
 
 func TestGetSVG_fontFamily(t *testing.T) {
 	fontDir := t.TempDir()
-	for _, file := range []string{"Inter-400", "Roboto Mono-400", "M PLUS 1p-400"} {
+	for _, family := range []string{"Inter", "Roboto Mono", "M PLUS 1p"} {
+		file := fontCacheFile(family, 400, "AB")
 		require.NoError(t, os.WriteFile(filepath.Join(fontDir, file), []byte("@font-face {}\n"), 0o600))
 	}
 
@@ -309,36 +311,4 @@ func TestNewColorGenerator_seed(t *testing.T) {
 			assert.Less(t, seed, 1.0)
 		})
 	}
-}
-
-func TestWithFont_url(t *testing.T) {
-	opts := avatarGenerator{}
-	WithFont("Roboto Mono", 700)(&opts)
-	assert.Equal(t, "https://fonts.googleapis.com/css?family=Roboto+Mono:700", opts.fontUrl)
-	assert.Equal(t, "Roboto Mono-700", opts.fontFile)
-}
-
-func TestDownloadFile(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/missing" {
-			http.Error(w, "not found", http.StatusNotFound)
-			return
-		}
-		_, _ = w.Write([]byte("@font-face {}"))
-	}))
-	defer server.Close()
-
-	t.Run("ok", func(t *testing.T) {
-		path := filepath.Join(t.TempDir(), "font")
-		require.NoError(t, downloadFile(path, server.URL+"/font"))
-		content, err := os.ReadFile(path)
-		require.NoError(t, err)
-		assert.Equal(t, "@font-face {}", string(content))
-	})
-
-	t.Run("error page is not kept", func(t *testing.T) {
-		path := filepath.Join(t.TempDir(), "font")
-		require.Error(t, downloadFile(path, server.URL+"/missing"))
-		assert.NoFileExists(t, path)
-	})
 }
