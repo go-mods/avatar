@@ -94,20 +94,20 @@ Each image is the answer of the server to this request, kept by `task readme:cap
 
 <!-- examples:start -->
 
-| Avatar | What it shows | Request | Go options |
-| --- | --- | --- | --- |
-| <img src="docs/examples/default.svg" alt="Colors from the name" height="72"> | Colors from the name | `/api?name=Grace+Hopper` | No option |
-| <img src="docs/examples/square.svg" alt="Square" height="72"> | Square | `/api?name=Alan+Turing&shape=square` | `avatar.WithShape("square")` |
-| <img src="docs/examples/rounded.svg" alt="Rounded corners" height="72"> | Rounded corners | `/api?name=Ada+Lovelace&shape=square&borderRadius=12` | `avatar.WithShape("square"), avatar.WithBorderRadius(12)` |
-| <img src="docs/examples/border.svg" alt="Border" height="72"> | Border | `/api?name=Linus+Torvalds&borderWidth=3&borderColor=steelblue` | `avatar.WithBorderWidth(3), avatar.WithBorderColor("steelblue")` |
-| <img src="docs/examples/dashed.svg" alt="Dashed border" height="72"> | Dashed border | `/api?name=Radia+Perlman&borderWidth=2&borderDash=4+2&borderColor=darkslategray` | `avatar.WithBorderWidth(2), avatar.WithBorderColor("darkslategray"), avatar.WithBorderDash("4 2")` |
-| <img src="docs/examples/colors.svg" alt="Your own colors" height="72"> | Your own colors | `/api?name=Katherine+Johnson&backgroundColor=midnightblue&fontColor=gold` | `avatar.WithBackgroundColor("midnightblue"), avatar.WithFontColor("gold")` |
-| <img src="docs/examples/padding.svg" alt="Space around" height="72"> | Space around | `/api?name=Hedy+Lamarr&padding=6&backgroundColor=%23fde68a` | `avatar.WithBackgroundColor("#fde68a"), avatar.WithPadding(6)` |
-| <img src="docs/examples/wide.svg" alt="Wide canvas" height="72"> | Wide canvas | `/api?name=Ken+Thompson&width=96&height=48` | `avatar.WithWidth(96), avatar.WithHeight(48)` |
-| <img src="docs/examples/font.png" alt="A Google font" height="72"> | A Google font | `/api?name=Margaret+Hamilton&fontFamily=Pacifico` | `avatar.WithFont("Pacifico", 400)` |
-| <img src="docs/examples/weight.png" alt="A heavy weight" height="72"> | A heavy weight | `/api?name=Barbara+Liskov&fontFamily=Inter&fontWeight=900` | `avatar.WithFont("Inter", 900)` |
-| <img src="docs/examples/length.svg" alt="Three letters" height="72"> | Three letters | `/api?name=Dennis+Ritchie&length=3&fontSize=16` | `initials.WithLength(3), avatar.WithFontSize(16)` |
-| <img src="docs/examples/separator.svg" alt="Separated initials" height="72"> | Separated initials | `/api?name=Edsger+Dijkstra&separator=.&fontSize=16` | `initials.WithSeparator("."), avatar.WithFontSize(16)` |
+| Avatar | Request and Go options |
+| --- | --- |
+| <img src="docs/examples/default.svg" alt="Colors from the name" height="72"> | **Colors from the name**<br>`/api?name=Grace+Hopper`<br>No option |
+| <img src="docs/examples/square.svg" alt="Square" height="72"> | **Square**<br>`/api?name=Alan+Turing&shape=square`<br>`avatar.WithShape("square")` |
+| <img src="docs/examples/rounded.svg" alt="Rounded corners" height="72"> | **Rounded corners**<br>`/api?name=Ada+Lovelace&shape=square&borderRadius=12`<br>`avatar.WithShape("square"), avatar.WithBorderRadius(12)` |
+| <img src="docs/examples/border.svg" alt="Border" height="72"> | **Border**<br>`/api?name=Linus+Torvalds&borderWidth=3&borderColor=steelblue`<br>`avatar.WithBorderWidth(3), avatar.WithBorderColor("steelblue")` |
+| <img src="docs/examples/dashed.svg" alt="Dashed border" height="72"> | **Dashed border**<br>`/api?name=Radia+Perlman&borderWidth=2&borderDash=4+2&borderColor=darkslategray`<br>`avatar.WithBorderWidth(2), avatar.WithBorderColor("darkslategray"), avatar.WithBorderDash("4 2")` |
+| <img src="docs/examples/colors.svg" alt="Your own colors" height="72"> | **Your own colors**<br>`/api?name=Katherine+Johnson&backgroundColor=midnightblue&fontColor=gold`<br>`avatar.WithBackgroundColor("midnightblue"), avatar.WithFontColor("gold")` |
+| <img src="docs/examples/padding.svg" alt="Space around" height="72"> | **Space around**<br>`/api?name=Hedy+Lamarr&padding=6&backgroundColor=%23fde68a`<br>`avatar.WithBackgroundColor("#fde68a"), avatar.WithPadding(6)` |
+| <img src="docs/examples/wide.svg" alt="Wide canvas" height="72"> | **Wide canvas**<br>`/api?name=Ken+Thompson&width=96&height=48`<br>`avatar.WithWidth(96), avatar.WithHeight(48)` |
+| <img src="docs/examples/font.svg" alt="A Google font" height="72"> | **A Google font**<br>`/api?name=Margaret+Hamilton&fontFamily=Pacifico`<br>`avatar.WithFont("Pacifico", 400)` |
+| <img src="docs/examples/weight.svg" alt="A heavy weight" height="72"> | **A heavy weight**<br>`/api?name=Barbara+Liskov&fontFamily=Inter&fontWeight=900`<br>`avatar.WithFont("Inter", 900)` |
+| <img src="docs/examples/length.svg" alt="Three letters" height="72"> | **Three letters**<br>`/api?name=Dennis+Ritchie&length=3&fontSize=16`<br>`initials.WithLength(3), avatar.WithFontSize(16)` |
+| <img src="docs/examples/separator.svg" alt="Separated initials" height="72"> | **Separated initials**<br>`/api?name=Edsger+Dijkstra&separator=.&fontSize=16`<br>`initials.WithSeparator("."), avatar.WithFontSize(16)` |
 
 <!-- examples:end -->
 
@@ -176,8 +176,6 @@ The avatar stays usable without its font, which is replaced by the system sans-s
 
 - the font servers cannot be reached, and the download is tried again at the next call;
 - the font holds none of the letters, as with Chinese initials and Inter.
-
-GitHub forbids fonts in the images of a repository, so the examples above which use a font are shown as PNG.
 
 ## Development
 

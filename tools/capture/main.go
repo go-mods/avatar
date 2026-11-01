@@ -4,21 +4,14 @@
 // to this file and writes the table of examples between the markers of the README. It also takes
 // screenshots of the page with a Chromium based browser, found on the machine or named by the BROWSER
 // environment variable.
-//
-// The avatars which use a font are also kept as PNG: GitHub serves the images of a repository with a
-// content security policy which forbids fonts, even embedded ones.
 package main
 
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"image"
-	"image/draw"
-	"image/png"
 	"io"
 	"log"
 	"net"
@@ -27,7 +20,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -41,13 +33,7 @@ const (
 	serverAddr   = "localhost:8080"
 	startMarker  = "<!-- examples:start -->"
 	endMarker    = "<!-- examples:end -->"
-
-	// pngScale keeps a small avatar sharp once displayed larger
-	pngScale = 3
 )
-
-// svgSize reads the size of an avatar
-var svgSize = regexp.MustCompile(`<svg width="(\d+)" height="(\d+)"`)
 
 // example is an avatar of the README
 type example struct {
@@ -92,7 +78,7 @@ func run() error {
 
 	rows := make([]string, 0, len(examples))
 	for _, item := range examples {
-		image, err := capture(base, browser, temporary, item)
+		image, err := capture(base, item)
 		if err != nil {
 			return fmt.Errorf("%s: %w", item.File, err)
 		}
@@ -181,76 +167,17 @@ func get(target string) ([]byte, error) {
 	return content, nil
 }
 
-// capture keeps the answer of the server and returns the name of the image to display
-func capture(base, browser, temporary string, item example) (string, error) {
+// capture keeps the answer of the server and returns the name of the image
+func capture(base string, item example) (string, error) {
 	svg, err := get(base + "/api?" + item.Query)
 	if err != nil {
 		return "", err
 	}
-	if err := os.WriteFile(filepath.Join(examplesDir, item.File+".svg"), svg, 0o600); err != nil {
-		return "", err
+	if strings.Contains(item.Query, "fontFamily=") && !bytes.Contains(svg, []byte("@font-face")) {
+		return "", errors.New("the font is not embedded: the font servers may be unreachable")
 	}
-	if !bytes.Contains(svg, []byte("@font-face")) {
-		if strings.Contains(item.Query, "fontFamily=") {
-			return "", errors.New("the font is not embedded: the font servers may be unreachable")
-		}
-		return item.File + ".svg", nil
-	}
-	name := item.File + ".png"
-	if err := screenshotAvatar(browser, temporary, svg, filepath.Join(examplesDir, name)); err != nil {
-		return "", err
-	}
-	return name, nil
-}
-
-// screenshotAvatar displays an avatar as an image in the browser and keeps exactly its area
-func screenshotAvatar(browser, temporary string, svg []byte, path string) error {
-	size := svgSize.FindSubmatch(svg)
-	if size == nil {
-		return errors.New("no size in the avatar")
-	}
-	width, err := strconv.Atoi(string(size[1]))
-	if err != nil {
-		return err
-	}
-	height, err := strconv.Atoi(string(size[2]))
-	if err != nil {
-		return err
-	}
-
-	page := filepath.Join(temporary, "avatar.html")
-	source := base64.StdEncoding.EncodeToString(svg)
-	body := `<!doctype html><body style="margin:0;background:transparent"><img style="display:block" src="data:image/svg+xml;base64,` + source + `">`
-	if err := os.WriteFile(page, []byte(body), 0o600); err != nil {
-		return err
-	}
-
-	shot := filepath.Join(temporary, "shot.png")
-	if err := screenshot(browser, temporary, "file:///"+filepath.ToSlash(page), shot, 600, 400,
-		"--default-background-color=00000000", fmt.Sprintf("--force-device-scale-factor=%d", pngScale)); err != nil {
-		return err
-	}
-	return cropPNG(shot, path, width*pngScale, height*pngScale)
-}
-
-// cropPNG keeps the top left corner of an image: a browser has a minimal window size
-func cropPNG(source, destination string, width, height int) error {
-	content, err := os.ReadFile(source) // #nosec G304 -- a file of the temporary directory
-	if err != nil {
-		return err
-	}
-	shot, err := png.Decode(bytes.NewReader(content))
-	if err != nil {
-		return err
-	}
-	cropped := image.NewNRGBA(image.Rect(0, 0, width, height))
-	draw.Draw(cropped, cropped.Bounds(), shot, image.Point{}, draw.Src)
-
-	var encoded bytes.Buffer
-	if err := png.Encode(&encoded, cropped); err != nil {
-		return err
-	}
-	return os.WriteFile(destination, encoded.Bytes(), 0o600)
+	name := item.File + ".svg"
+	return name, os.WriteFile(filepath.Join(examplesDir, name), svg, 0o600)
 }
 
 // screenshotPage keeps a view of the page
@@ -318,7 +245,7 @@ func tableRow(item example, image string) (string, error) {
 	} else {
 		code = "`" + code + "`"
 	}
-	return fmt.Sprintf(`| <img src="%s/%s" alt="%s" height="72"> | %s | `+"`/api?%s`"+` | %s |`,
+	return fmt.Sprintf(`| <img src="%s/%s" alt="%s" height="72"> | **%s**<br>`+"`/api?%s`"+`<br>%s |`,
 		examplesDir, image, item.Caption, item.Caption, item.Query, code), nil
 }
 
@@ -381,7 +308,7 @@ func writeTable(rows []string) error {
 	if start < 0 || end < start {
 		return fmt.Errorf("%s: markers not found", readmeFile)
 	}
-	table := "| Avatar | What it shows | Request | Go options |\n| --- | --- | --- | --- |\n" + strings.Join(rows, "\n") + "\n"
+	table := "| Avatar | Request and Go options |\n| --- | --- |\n" + strings.Join(rows, "\n") + "\n"
 	updated := readme[:start+len(startMarker)] + "\n\n" + table + "\n" + readme[end:]
 	return os.WriteFile(readmeFile, []byte(updated), 0o600) // #nosec G703 -- a fixed file name
 }

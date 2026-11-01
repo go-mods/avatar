@@ -1,13 +1,9 @@
 package main
 
 import (
-	"image"
-	"image/color"
-	"image/png"
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -51,29 +47,6 @@ func TestGet_failsOnAnError(t *testing.T) {
 
 	require.ErrorContains(t, err, "400 Bad Request")
 	require.ErrorContains(t, err, "invalid color")
-}
-
-func TestCropPNG(t *testing.T) {
-	dir := t.TempDir()
-	source := filepath.Join(dir, "source.png")
-	shot := image.NewNRGBA(image.Rect(0, 0, 10, 10))
-	shot.Set(1, 1, color.NRGBA{R: 255, A: 255})
-	file, err := os.Create(source)
-	require.NoError(t, err)
-	require.NoError(t, png.Encode(file, shot))
-	require.NoError(t, file.Close())
-	destination := filepath.Join(dir, "destination.png")
-
-	require.NoError(t, cropPNG(source, destination, 4, 3))
-
-	cropped, err := os.Open(destination)
-	require.NoError(t, err)
-	defer func() { _ = cropped.Close() }()
-	result, err := png.Decode(cropped)
-	require.NoError(t, err)
-	assert.Equal(t, image.Rect(0, 0, 4, 3), result.Bounds())
-	red, _, _, _ := result.At(1, 1).RGBA()
-	assert.NotZero(t, red)
 }
 
 func TestWriteTable(t *testing.T) {
