@@ -1,4 +1,7 @@
-assets/
-bin/
-sample/
-**/node_modules
+# Only what the build reads
+*
+!go.mod
+!go.sum
+!*.go
+!cmd/avatar/*.go
+!cmd/avatar/web/dist/**

@@ -1,68 +1,67 @@
 # Taskfile for the Docker tasks of the avatar server
 # Documentation: https://taskfile.dev
 #
-# The services are described in docker-compose.yml (image built from the Dockerfile).
-# The fonts are read from the assets/ folder, mounted in the container.
+# The service is described in compose.yaml (image built from the Dockerfile, tagged with the
+# git version). The fonts are kept in a named volume. The image has no shell: use the logs and
+# the /health route to look into a running server.
 #
 # Usage:
 #   task docker:build    # Build the image
-#   task docker:up       # Start the server on http://localhost:8080
+#   task docker:up       # Start the server and wait until it is healthy
 #   task docker:logs     # Follow the logs
-#   task docker:down     # Stop the server
+#   task docker:down     # Stop the server, the fonts are kept
+#   task docker:clean    # Stop the server and remove the fonts and the image
+#
+# The published port is 8080, or the value of AVATAR_PORT.
 version: '3'
+
+vars:
+  VERSION:
+    sh: git describe --tags --always --dirty
+
+env:
+  VERSION: "{{.VERSION}}"
 
 tasks:
 
   build:
-    desc: "Builds the docker services"
+    desc: "Builds the image of the server, tagged with the git version"
     cmds:
-      - echo "Building services..."
-      - docker compose pull
+      - echo "Building the image {{.VERSION}}..."
       - docker compose build
     silent: true
 
   up:
-    desc: "Starts the docker services"
+    desc: "Starts the server and waits until it is healthy"
     cmds:
-      - echo "Starting services..."
-      - docker compose up -d
-      - echo "Avatar server - http://localhost:8080"
-      - echo "Example request - http://localhost:8080/api?name=John%20Doe"
-      - echo "Example request - http://localhost:8080/api?name=John%20Doe&shape=square&width=200&height=200&backgroundColor=red&fontColor=white&fontFamily=Caprasimo&fontWeight=400&borderWidth=10&borderColor=blue&borderDash=10,10&borderRadius=50&padding=5"
+      - echo "Starting the server..."
+      - docker compose up -d --wait
+      - echo "Avatar server - http://localhost:${AVATAR_PORT:-8080}"
     silent: true
 
   down:
-    desc: "Stops the docker services"
+    desc: "Stops the server, the fonts are kept"
     cmds:
-      - echo "Stopping services..."
+      - echo "Stopping the server..."
       - docker compose down
     silent: true
 
   restart:
-    desc: "Restarts the docker services"
+    desc: "Restarts the server"
     cmds:
       - task: down
       - task: up
     silent: true
 
   logs:
-    desc: "Follows the logs of the docker services"
+    desc: "Follows the logs of the server"
     cmds:
-      - echo "Showing services logs..."
       - docker compose logs -f
     silent: true
 
-  bash:
-    desc: "Opens a shell (sh) in the avatar container"
-    interactive: true
-    cmds:
-      - echo "Opening a shell in the avatar container..."
-      - docker compose exec avatar sh
-    silent: true
-
   clean:
-    desc: "Stops the docker services and removes their volumes and orphan containers"
+    desc: "Stops the server and removes its fonts and its image"
     cmds:
-      - echo "Cleaning services..."
-      - docker compose down --volumes --remove-orphans
+      - echo "Cleaning..."
+      - docker compose down --volumes --rmi local --remove-orphans
     silent: true

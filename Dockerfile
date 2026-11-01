@@ -1,38 +1,40 @@
-# Start from golang base image to build the server
-FROM golang:1.26.10-alpine AS builder
+# syntax=docker/dockerfile:1
 
-# Set the current working directory inside the container
-WORKDIR /build
+# Same minor as the go line of go.mod
+ARG GO_VERSION=1.26.10
 
-# Copy go mod and sum files
+# Build the server: a static binary, without downloading another toolchain
+FROM golang:${GO_VERSION}-alpine AS build
+WORKDIR /src
+ENV CGO_ENABLED=0 GOTOOLCHAIN=local
+
+# Dependencies first: this layer is rebuilt only when go.mod or go.sum change
 COPY go.mod go.sum ./
+RUN --mount=type=cache,target=/go/pkg/mod go mod download
 
-# Download all dependencies.
-# Dependencies will be cached if the go.mod and the go.sum files are not changed
-RUN go mod download
-
-# Copy the source from the current directory to the working Directory inside the container
 COPY . .
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    go build -trimpath -ldflags="-s -w" -o /out/avatar ./cmd/avatar
 
-# Build the server
-RUN go build -o bin/ ./cmd/avatar
+# A distroless image has no shell to create this directory
+RUN mkdir -p /out/fonts
 
+# Run it in an image which only holds the certificates, the time zones and an unprivileged user
+FROM gcr.io/distroless/static-debian13:nonroot
+ARG VERSION=dev
+LABEL org.opencontainers.image.version="${VERSION}" \
+    org.opencontainers.image.source="https://github.com/go-mods/avatar"
 
+COPY --from=build /out/avatar /usr/local/bin/avatar
+# A new named volume takes the owner of this directory: the server can write its fonts
+COPY --from=build --chown=nonroot:nonroot /out/fonts /var/cache/avatar/fonts
 
-# Start a new stage from scratch
-FROM alpine:3.20
-
-# Define working dir
-WORKDIR /avatar
-
-# Copy the Pre-built binary file from the previous stage.
-COPY --from=builder /build/bin /avatar/
-
-# Make avatar executable
-RUN chmod +x avatar
-
-# Expose port 8080 to the outside world
+USER nonroot:nonroot
 EXPOSE 8080
 
-# Command to run the executable
-CMD ["./avatar", "--fontdir", "assets/fonts"]
+# The binary probes itself: the image has no curl nor shell
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+    CMD ["/usr/local/bin/avatar", "healthcheck"]
+
+ENTRYPOINT ["/usr/local/bin/avatar", "-fontdir", "/var/cache/avatar/fonts"]

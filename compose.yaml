@@ -1,0 +1,29 @@
+services:
+  avatar:
+    build:
+      context: .
+      args:
+        VERSION: ${VERSION:-dev}
+    image: avatar:${VERSION:-dev}
+    ports:
+      - "${AVATAR_PORT:-8080}:8080"
+    volumes:
+      - fonts:/var/cache/avatar/fonts
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/avatar", "healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    deploy:
+      resources:
+        limits: { cpus: "0.50", memory: 128M }
+        reservations: { cpus: "0.10", memory: 32M }
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  fonts:
