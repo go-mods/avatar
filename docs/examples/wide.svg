@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<svg width="96" height="48"
+     xmlns="http://www.w3.org/2000/svg"
+     xmlns:xlink="http://www.w3.org/1999/xlink">
+<circle cx="48" cy="24" r="24" fill="#9ed9b9" stroke="#8e9a93" stroke-width="0" stroke-dasharray="none" />
+<text x="48" y="31" text-anchor="middle" font-family="sans-serif" font-size="21" fill="#049144">KT</text>
+</svg>

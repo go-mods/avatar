@@ -45,9 +45,6 @@ tasks:
 
   fmt:
     desc: "Formats Go code with golangci-lint fmt (formatters of .golangci.yml) and checks EditorConfig"
-    sources:
-      - "**/*.go"
-      - .golangci.yml
     deps: [":go-tools:check-golangci-lint", ":go-tools:check-editorconfig-checker"]
     cmds:
       - echo "Formatting..."
@@ -93,6 +90,18 @@ tasks:
     cmds:
       - echo "Testing..."
       - go test ./...
+    silent: true
+
+  test-race:
+    desc: "Runs the tests with the race detector (optional: needs cgo and a C compiler)"
+    env:
+      CGO_ENABLED: "1"
+    preconditions:
+      - sh: command -v gcc
+        msg: "The race detector needs a C compiler (gcc) in the PATH"
+    cmds:
+      - echo "Testing with the race detector..."
+      - go test -race ./...
     silent: true
 
   test-coverage:

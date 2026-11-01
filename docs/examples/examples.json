@@ -1,0 +1,14 @@
+[
+  { "file": "default", "caption": "Colors from the name", "query": "name=Grace+Hopper" },
+  { "file": "square", "caption": "Square", "query": "name=Alan+Turing&shape=square" },
+  { "file": "rounded", "caption": "Rounded corners", "query": "name=Ada+Lovelace&shape=square&borderRadius=12" },
+  { "file": "border", "caption": "Border", "query": "name=Linus+Torvalds&borderWidth=3&borderColor=steelblue" },
+  { "file": "dashed", "caption": "Dashed border", "query": "name=Radia+Perlman&borderWidth=2&borderDash=4+2&borderColor=darkslategray" },
+  { "file": "colors", "caption": "Your own colors", "query": "name=Katherine+Johnson&backgroundColor=midnightblue&fontColor=gold" },
+  { "file": "padding", "caption": "Space around", "query": "name=Hedy+Lamarr&padding=6&backgroundColor=%23fde68a" },
+  { "file": "wide", "caption": "Wide canvas", "query": "name=Ken+Thompson&width=96&height=48" },
+  { "file": "font", "caption": "A Google font", "query": "name=Margaret+Hamilton&fontFamily=Pacifico" },
+  { "file": "weight", "caption": "A heavy weight", "query": "name=Barbara+Liskov&fontFamily=Inter&fontWeight=900" },
+  { "file": "length", "caption": "Three letters", "query": "name=Dennis+Ritchie&length=3&fontSize=16" },
+  { "file": "separator", "caption": "Separated initials", "query": "name=Edsger+Dijkstra&separator=.&fontSize=16" }
+]

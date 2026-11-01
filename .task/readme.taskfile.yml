@@ -1,0 +1,17 @@
+# Taskfile for the images of the README
+# Documentation: https://taskfile.dev
+#
+# Every image of the README comes from the real server: never edit them by hand.
+# To add an example, add it to docs/examples/examples.json, then run task readme:capture.
+#
+# The capture needs the network (Google Fonts) and a Chromium based browser, found on the
+# machine or named by the BROWSER environment variable.
+version: '3'
+
+tasks:
+
+  capture:
+    desc: "Requests the examples from the real server, then writes the images and the table of the README"
+    cmds:
+      - go run ./tools/capture
+    silent: true

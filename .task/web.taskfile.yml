@@ -42,6 +42,9 @@ tasks:
   build:
     desc: "Checks the types and builds the page embedded in the server"
     dir: "{{.WEB_DIR}}"
+    preconditions:
+      - sh: test -d node_modules
+        msg: "The dependencies of the page are missing. Run 'task web:install'"
     cmds:
       - echo "Building the page..."
       - npm run build
