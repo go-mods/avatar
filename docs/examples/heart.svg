@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<svg width="48" height="48"
+     xmlns="http://www.w3.org/2000/svg"
+     xmlns:xlink="http://www.w3.org/1999/xlink">
+<path d="M24,48 C15.6,41.28 0,31.2 0,15.6 C0,6 6.72,1.2 13.2,1.2 C18,1.2 22.08,3.6 24,9.12 C25.92,3.6 30,1.2 34.8,1.2 C41.28,1.2 48,6 48,15.6 C48,31.2 32.4,41.28 24,48 Z" stroke-linejoin="round" fill="#9dddce" stroke="#92a19d" stroke-width="0" stroke-dasharray="none" />
+<text x="24" y="31" text-anchor="middle" font-family="sans-serif" font-size="21" fill="#049271">MJ</text>
+</svg>

@@ -1,6 +1,8 @@
 // An empty number or text means that the server chooses the value.
 export type NumberOption = number | ''
 
+export const shapes = ['circle', 'square', 'diamond', 'octagon', 'heart', 'cloud'] as const
+
 export interface AvatarOptions {
   name: string
   separator: string
@@ -12,7 +14,7 @@ export interface AvatarOptions {
   wordLength: boolean
   width: NumberOption
   height: NumberOption
-  shape: 'circle' | 'square'
+  shape: (typeof shapes)[number]
   backgroundColor: string
   fontColor: string
   borderColor: string
@@ -86,7 +88,7 @@ export function buildQuery(options: AvatarOptions): string {
     if (options[key]) query.set(key, 'true')
   }
   if (options.shape !== 'circle') query.set('shape', options.shape)
-  if (options.shape === 'circle') query.delete('borderRadius')
+  if (options.shape !== 'square') query.delete('borderRadius')
   return query.toString()
 }
 
@@ -105,7 +107,7 @@ export function parseQuery(search: string): AvatarOptions {
   for (const key of booleanKeys) {
     options[key] = query.get(key) === 'true'
   }
-  if (query.get('shape') === 'square') options.shape = 'square'
+  options.shape = shapes.find((shape) => shape === query.get('shape')) ?? options.shape
   if (options.fontWeight === 400) options.fontWeight = ''
   return options
 }
@@ -137,7 +139,7 @@ export function goCode(options: AvatarOptions): string {
   if (options.fontSize !== '') avatar.push(`avatar.WithFontSize(${options.fontSize})`)
   if (options.borderColor !== '') avatar.push(`avatar.WithBorderColor(${text(options.borderColor)})`)
   if (options.borderWidth !== '') avatar.push(`avatar.WithBorderWidth(${options.borderWidth})`)
-  if (options.shape !== 'circle' && options.borderRadius !== '') avatar.push(`avatar.WithBorderRadius(${options.borderRadius})`)
+  if (options.shape === 'square' && options.borderRadius !== '') avatar.push(`avatar.WithBorderRadius(${options.borderRadius})`)
   if (options.borderDash !== '') avatar.push(`avatar.WithBorderDash(${text(options.borderDash)})`)
   if (options.padding !== '') avatar.push(`avatar.WithPadding(${options.padding})`)
 
@@ -162,7 +164,7 @@ export function svgToDataUrl(svg: string): string {
 
 // readBackgroundColor returns the color which fills the shape of an svg.
 export function readBackgroundColor(svg: string): string | null {
-  return /<(?:circle|rect)\b[^>]*\sfill="(#[0-9a-fA-F]{6})"/.exec(svg)?.[1] ?? null
+  return /<(?:circle|rect|polygon|path)\b[^>]*\sfill="(#[0-9a-fA-F]{6})"/.exec(svg)?.[1] ?? null
 }
 
 function luminance(hex: string): number {

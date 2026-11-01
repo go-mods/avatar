@@ -51,7 +51,7 @@ var (
 	// ErrInvalidColor is returned when a color is neither a color name nor a hex color code
 	ErrInvalidColor = errors.New("invalid color")
 
-	// ErrInvalidShape is returned when the shape is neither a circle nor a square
+	// ErrInvalidShape is returned when the shape is not one of those listed by WithShape
 	ErrInvalidShape = errors.New("invalid shape")
 )
 
@@ -82,8 +82,12 @@ const (
 	regularFontWeight = 400
 
 	// The shapes of the svg
-	shapeCircle = "circle"
-	shapeRect   = "rect"
+	shapeCircle  = "circle"
+	shapeRect    = "rect"
+	shapeDiamond = "diamond"
+	shapeOctagon = "octagon"
+	shapeHeart   = "heart"
+	shapeCloud   = "cloud"
 )
 
 // avatarGenerator is a struct to hold the options for the avatar generator
@@ -269,7 +273,8 @@ func WithFontDir(fontDir string) GeneratorOption {
 	}
 }
 
-// WithShape sets the shape of the svg: "circle", the default, or "square"
+// WithShape sets the shape of the svg: "circle", the default, "square", "diamond", "octagon", "heart"
+// or "cloud"
 func WithShape(shape string) GeneratorOption {
 	return func(opts *avatarGenerator) {
 		switch shape {
@@ -423,34 +428,7 @@ func generateSVG(ctx context.Context, opts avatarGenerator) (*bytes.Buffer, erro
 	}
 
 	// set the shape
-	if opts.shape == shapeRect {
-		rect := `<rect `
-		rect += fmt.Sprintf(`x="%d" `, opts.padding+opts.borderWidth)
-		rect += fmt.Sprintf(`y="%d" `, opts.padding+opts.borderWidth)
-		rect += fmt.Sprintf(`width="%d" `, opts.width-opts.padding*2-opts.borderWidth*2)
-		rect += fmt.Sprintf(`height="%d" `, opts.height-opts.padding*2-opts.borderWidth*2)
-		rect += fmt.Sprintf(`rx="%d" `, opts.borderRadius)
-		rect += fmt.Sprintf(`ry="%d" `, opts.borderRadius)
-		rect += fmt.Sprintf(`fill="%s" `, opts.backgroundColor)
-		rect += fmt.Sprintf(`stroke="%s" `, opts.borderColor)
-		rect += fmt.Sprintf(`stroke-width="%d" `, opts.borderWidth)
-		rect += fmt.Sprintf(`stroke-dasharray="%s" `, opts.borderDash)
-		rect += `/>`
-
-		_, _ = fmt.Fprintln(buffer, rect)
-	} else {
-		circle := `<circle `
-		circle += fmt.Sprintf(`cx="%d" `, opts.width/2)
-		circle += fmt.Sprintf(`cy="%d" `, opts.height/2)
-		circle += fmt.Sprintf(`r="%d" `, min(opts.width, opts.height)/2-opts.padding-opts.borderWidth)
-		circle += fmt.Sprintf(`fill="%s" `, opts.backgroundColor)
-		circle += fmt.Sprintf(`stroke="%s" `, opts.borderColor)
-		circle += fmt.Sprintf(`stroke-width="%d" `, opts.borderWidth)
-		circle += fmt.Sprintf(`stroke-dasharray="%s" `, opts.borderDash)
-		circle += `/>`
-
-		_, _ = fmt.Fprintln(buffer, circle)
-	}
+	_, _ = fmt.Fprintln(buffer, shapeElement(opts))
 
 	// set the text
 	if opts.initials != "" {
@@ -481,7 +459,9 @@ func validate(opts avatarGenerator) error {
 	if !borderDashRegex.MatchString(opts.borderDash) {
 		return fmt.Errorf("%w: %q", ErrInvalidBorderDash, opts.borderDash)
 	}
-	if opts.shape != shapeCircle && opts.shape != shapeRect {
+	switch opts.shape {
+	case shapeCircle, shapeRect, shapeDiamond, shapeOctagon, shapeHeart, shapeCloud:
+	default:
 		return fmt.Errorf("%w: %q", ErrInvalidShape, opts.shape)
 	}
 	return validateSize(opts)

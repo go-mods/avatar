@@ -7,6 +7,7 @@ import {
   parseQuery,
   readableInkOn,
   readBackgroundColor,
+  shapes,
   svgToDataUrl,
   usesRandomColors,
   type AvatarOptions,
@@ -36,6 +37,8 @@ describe('buildQuery', () => {
 
   it('leaves out the options without effect', () => {
     expect(buildQuery(options({ borderRadius: 8 }))).not.toContain('borderRadius')
+    expect(buildQuery(options({ shape: 'heart', borderRadius: 8 }))).not.toContain('borderRadius')
+    expect(goCode(options({ shape: 'heart', borderRadius: 8 }))).not.toContain('WithBorderRadius')
   })
 
   it('sends the weight with or without family', () => {
@@ -48,6 +51,12 @@ describe('parseQuery', () => {
   it('restores the options of a shared link', () => {
     const shared = options({ name: 'Grace Hopper', shape: 'square', width: 96, borderRadius: 8, lowercase: true, fontFamily: 'Roboto Mono', fontWeight: 700 })
     expect(parseQuery(buildQuery(shared))).toEqual(shared)
+  })
+
+  it('restores every shape', () => {
+    for (const shape of shapes) {
+      expect(parseQuery(buildQuery(options({ shape }))).shape).toBe(shape)
+    }
   })
 
   it('keeps the default of what cannot be read', () => {
@@ -105,6 +114,8 @@ describe('readBackgroundColor', () => {
   it('reads the fill of the shape, not of the text', () => {
     expect(readBackgroundColor('<circle cx="1" fill="#c4b3a2" stroke="#000000" /><text fill="#8d4806">A</text>')).toBe('#c4b3a2')
     expect(readBackgroundColor('<rect x="0" fill="#123456" />')).toBe('#123456')
+    expect(readBackgroundColor('<polygon points="0,0" fill="#123456" />')).toBe('#123456')
+    expect(readBackgroundColor('<path d="M0,0" stroke-linejoin="round" fill="#123456" />')).toBe('#123456')
   })
 
   it('does not take the stroke for a fill', () => {

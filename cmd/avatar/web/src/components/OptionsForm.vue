@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { fontFamilies } from '../lib/examples'
-import type { AvatarOptions } from '../lib/options'
+import { shapes, type AvatarOptions } from '../lib/options'
 import ColorField from './ColorField.vue'
 
 const options = defineModel<AvatarOptions>({ required: true })
@@ -30,12 +30,9 @@ const weights = [100, 200, 300, 500, 600, 700, 800, 900]
   <form class="space-y-9" @submit.prevent>
     <fieldset>
       <legend class="mb-3 text-lg font-semibold">Shape and size</legend>
-      <div class="mb-4 flex gap-5">
-        <label class="flex cursor-pointer items-center gap-2">
-          <input v-model="options.shape" type="radio" name="shape" value="circle" /> Circle
-        </label>
-        <label class="flex cursor-pointer items-center gap-2">
-          <input v-model="options.shape" type="radio" name="shape" value="square" /> Square
+      <div class="mb-4 flex flex-wrap gap-x-5 gap-y-2">
+        <label v-for="shape in shapes" :key="shape" class="flex cursor-pointer items-center gap-2 capitalize">
+          <input v-model="options.shape" type="radio" name="shape" :value="shape" /> {{ shape }}
         </label>
       </div>
       <div class="grid grid-cols-2 gap-4 sm:grid-cols-3">

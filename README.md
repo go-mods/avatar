@@ -64,7 +64,7 @@ func main() {
 | Option | Effect | Default |
 | --- | --- | --- |
 | `WithWidth(n)`, `WithHeight(n)` | Size of the image | 48 |
-| `WithShape(s)` | `"circle"` or `"square"` | `"circle"` |
+| `WithShape(s)` | `"circle"`, `"square"`, `"diamond"`, `"octagon"`, `"heart"` or `"cloud"` | `"circle"` |
 | `WithPadding(n)` | Space around the shape | 0 |
 | `WithBackgroundColor(c)`, `WithFontColor(c)`, `WithBorderColor(c)` | A color name or a hex code | From the initials |
 | `WithBackgroundColorFunc(f)`, `WithFontColorFunc(f)`, `WithBorderColorFunc(f)` | A function which generates the color | Built-in palette |
@@ -99,6 +99,10 @@ Each image is the answer of the server to this request, kept by `task readme:cap
 | <img src="docs/examples/default.svg" alt="Colors from the name" height="72"> | **Colors from the name**<br>`/api?name=Grace+Hopper`<br>No option |
 | <img src="docs/examples/square.svg" alt="Square" height="72"> | **Square**<br>`/api?name=Alan+Turing&shape=square`<br>`avatar.WithShape("square")` |
 | <img src="docs/examples/rounded.svg" alt="Rounded corners" height="72"> | **Rounded corners**<br>`/api?name=Ada+Lovelace&shape=square&borderRadius=12`<br>`avatar.WithShape("square"), avatar.WithBorderRadius(12)` |
+| <img src="docs/examples/diamond.svg" alt="Diamond" height="72"> | **Diamond**<br>`/api?name=Joan+Clarke&shape=diamond`<br>`avatar.WithShape("diamond")` |
+| <img src="docs/examples/octagon.svg" alt="Octagon" height="72"> | **Octagon**<br>`/api?name=John+McCarthy&shape=octagon`<br>`avatar.WithShape("octagon")` |
+| <img src="docs/examples/heart.svg" alt="Heart" height="72"> | **Heart**<br>`/api?name=Mary+Jackson&shape=heart`<br>`avatar.WithShape("heart")` |
+| <img src="docs/examples/cloud.svg" alt="Cloud" height="72"> | **Cloud**<br>`/api?name=Vint+Cerf&shape=cloud`<br>`avatar.WithShape("cloud")` |
 | <img src="docs/examples/border.svg" alt="Border" height="72"> | **Border**<br>`/api?name=Linus+Torvalds&borderWidth=3&borderColor=steelblue`<br>`avatar.WithBorderWidth(3), avatar.WithBorderColor("steelblue")` |
 | <img src="docs/examples/dashed.svg" alt="Dashed border" height="72"> | **Dashed border**<br>`/api?name=Radia+Perlman&borderWidth=2&borderDash=4+2&borderColor=darkslategray`<br>`avatar.WithBorderWidth(2), avatar.WithBorderColor("darkslategray"), avatar.WithBorderDash("4 2")` |
 | <img src="docs/examples/colors.svg" alt="Your own colors" height="72"> | **Your own colors**<br>`/api?name=Katherine+Johnson&backgroundColor=midnightblue&fontColor=gold`<br>`avatar.WithBackgroundColor("midnightblue"), avatar.WithFontColor("gold")` |
@@ -151,7 +155,7 @@ changes the published port, and the fonts are kept in a named volume.
 | `sensitive` | boolean | Keep the case of the name | `false` |
 | `wordLength` | boolean | One letter per word | `false` |
 | `width`, `height` | number | 1 to 4096 | 48 |
-| `shape` | text | `circle`, `square` | `circle` |
+| `shape` | text | `circle`, `square`, `diamond`, `octagon`, `heart`, `cloud` | `circle` |
 | `padding` | number | 0 to 4096 | 0 |
 | `backgroundColor`, `fontColor`, `borderColor` | text | A color name or a hex code, with `#` encoded as `%23` | From the name |
 | `randomColor`, `randomBackgroundColor`, `randomFontColor`, `randomBorderColor` | boolean | Draw the colors at each request | `false` |

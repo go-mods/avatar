@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<svg width="64" height="64"
+     xmlns="http://www.w3.org/2000/svg"
+     xmlns:xlink="http://www.w3.org/1999/xlink">
+<polygon points="32,2 62,32 32,62 2,32" fill="#9dddcf" stroke="#92a19e" stroke-width="2" stroke-dasharray="none" />
+<text x="32" y="41" text-anchor="middle" font-family="sans-serif" font-size="28" fill="#049274">MN</text>
+</svg>

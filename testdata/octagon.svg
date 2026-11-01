@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<svg width="64" height="64"
+     xmlns="http://www.w3.org/2000/svg"
+     xmlns:xlink="http://www.w3.org/1999/xlink">
+<polygon points="19.57,2 44.43,2 62,19.57 62,44.43 44.43,62 19.57,62 2,44.43 2,19.57" fill="#9cd5e1" stroke="#98a6a9" stroke-width="2" stroke-dasharray="none" />
+<text x="32" y="41" text-anchor="middle" font-family="sans-serif" font-size="28" fill="#037a93">OP</text>
+</svg>

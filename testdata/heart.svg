@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<svg width="64" height="64"
+     xmlns="http://www.w3.org/2000/svg"
+     xmlns:xlink="http://www.w3.org/1999/xlink">
+<path d="M32,62 C21.5,53.6 2,41 2,21.5 C2,9.5 10.4,3.5 18.5,3.5 C24.5,3.5 29.6,6.5 32,13.4 C34.4,6.5 39.5,3.5 45.5,3.5 C53.6,3.5 62,9.5 62,21.5 C62,41 42.5,53.6 32,62 Z" stroke-linejoin="round" fill="#9abbe5" stroke="#9da6b2" stroke-width="2" stroke-dasharray="none" />
+<text x="32" y="41" text-anchor="middle" font-family="sans-serif" font-size="28" fill="#034394">QR</text>
+</svg>

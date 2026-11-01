@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<svg width="64" height="64"
+     xmlns="http://www.w3.org/2000/svg"
+     xmlns:xlink="http://www.w3.org/1999/xlink">
+<path d="M13.4,51.5 A11.4,11.4 0 0 1 10.4,29.3 A9.6,9.6 0 0 1 23.9,17 A12.6,12.6 0 0 1 44.6,21.5 A7.5,7.5 0 0 1 53.6,29.3 A11.4,11.4 0 0 1 50.6,51.5 Z" stroke-linejoin="round" fill="#989de9" stroke="#a1a3ba" stroke-width="2" stroke-dasharray="none" />
+<text x="32" y="41" text-anchor="middle" font-family="sans-serif" font-size="28" fill="#030b95">ST</text>
+</svg>

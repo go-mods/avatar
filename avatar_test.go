@@ -73,6 +73,10 @@ func TestGetSVG_output(t *testing.T) {
 			initials: "KL",
 			options:  []GeneratorOption{WithWidth(200), WithHeight(50), WithBorderWidth(2)},
 		},
+		{name: "diamond", initials: "MN", options: []GeneratorOption{WithShape("diamond"), WithWidth(64), WithHeight(64), WithBorderWidth(2)}},
+		{name: "octagon", initials: "OP", options: []GeneratorOption{WithShape("octagon"), WithWidth(64), WithHeight(64), WithBorderWidth(2)}},
+		{name: "heart", initials: "QR", options: []GeneratorOption{WithShape("heart"), WithWidth(64), WithHeight(64), WithBorderWidth(2)}},
+		{name: "cloud", initials: "ST", options: []GeneratorOption{WithShape("cloud"), WithWidth(64), WithHeight(64), WithBorderWidth(2)}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -120,6 +124,12 @@ func TestGetSVG_options(t *testing.T) {
 		{name: "padding on a square", options: []GeneratorOption{WithShape("square"), WithPadding(4)}, want: `x="4" y="4" width="40" height="40"`},
 		{name: "empty shape", options: []GeneratorOption{WithShape("")}, want: `<circle `},
 		{name: "rect shape", options: []GeneratorOption{WithShape("rect")}, want: `<rect `},
+		{name: "padding on a diamond", options: []GeneratorOption{WithShape("diamond"), WithPadding(4)}, want: `points="24,4 44,24 24,44 4,24"`},
+		{name: "wide diamond", options: []GeneratorOption{WithShape("diamond"), WithWidth(200), WithHeight(50)}, want: `points="100,0 125,25 100,50 75,25"`},
+		{name: "octagon", options: []GeneratorOption{WithShape("octagon")}, want: `<polygon points="14.06,0 33.94,0 48,14.06 `},
+		{name: "heart", options: []GeneratorOption{WithShape("heart"), WithPadding(4)}, want: `<path d="M24,44 C`},
+		{name: "cloud", options: []GeneratorOption{WithShape("cloud"), WithPadding(4)}, want: `<path d="M11.6,37 A7.6,7.6 0 0 1 `},
+		{name: "dashed heart", options: []GeneratorOption{WithShape("heart"), WithBorderDash("4 2")}, want: `stroke-dasharray="4 2"`},
 		{name: "tall circle", options: []GeneratorOption{WithWidth(50), WithHeight(200)}, want: `r="25"`},
 		{name: "wide circle with padding and border", options: []GeneratorOption{WithWidth(200), WithHeight(50), WithPadding(5), WithBorderWidth(2)}, want: `r="18"`},
 		{name: "smallest room left", options: []GeneratorOption{WithPadding(23)}, want: `r="1"`},
@@ -134,6 +144,24 @@ func TestGetSVG_options(t *testing.T) {
 			require.NoError(t, err)
 			assert.Contains(t, svg.String(), tt.want)
 		})
+	}
+}
+
+func TestShapes_stayInsideTheirBox(t *testing.T) {
+	outlines := map[string][]point{
+		"diamond": diamondPoints,
+		"octagon": octagonPoints,
+		"heart":   append([]point{heartStart}, heartCurves...),
+		"cloud":   {cloudStart},
+	}
+	for _, a := range cloudArcs {
+		outlines["cloud"] = append(outlines["cloud"], a.to)
+	}
+	for name, points := range outlines {
+		for _, p := range points {
+			assert.LessOrEqual(t, math.Abs(p.x), 1.0, "%s: %v", name, p)
+			assert.LessOrEqual(t, math.Abs(p.y), 1.0, "%s: %v", name, p)
+		}
 	}
 }
 

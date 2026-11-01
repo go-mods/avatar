@@ -9,6 +9,10 @@ export interface Example {
 export const examples: Example[] = [
   { caption: 'Colors from the name', options: { name: 'Grace Hopper' } },
   { caption: 'Rounded square', options: { name: 'Alan Turing', shape: 'square', borderRadius: 10 } },
+  { caption: 'A diamond', options: { name: 'Joan Clarke', shape: 'diamond' } },
+  { caption: 'An octagon', options: { name: 'John McCarthy', shape: 'octagon' } },
+  { caption: 'A heart', options: { name: 'Mary Jackson', shape: 'heart' } },
+  { caption: 'A cloud', options: { name: 'Vint Cerf', shape: 'cloud' } },
   { caption: 'Dashed border', options: { name: 'Linus Torvalds', borderWidth: 2, borderDash: '4 2', borderColor: '#334155' } },
   { caption: 'Your own colors', options: { name: 'Katherine Johnson', backgroundColor: 'midnightblue', fontColor: 'gold' } },
   { caption: 'A Google font', options: { name: 'Margaret Hamilton', fontFamily: 'Pacifico' } },
