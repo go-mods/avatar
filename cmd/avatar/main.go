@@ -24,18 +24,10 @@ func main() {
 	flag.StringVar(&fontDir, "fontdir", "", "Directory to store font files")
 	flag.Parse()
 
-	// Create a new router
-	gin.SetMode(gin.ReleaseMode)
-	router := gin.Default()
-	router.Use(cors.Default())
-
-	// Attach the routes
-	router.GET("/api", avatarHandler)
-
 	// server configuration
 	server := &http.Server{
 		Addr:         ":8080",
-		Handler:      router,
+		Handler:      newRouter(),
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 	}
@@ -45,6 +37,17 @@ func main() {
 
 	// Start the server
 	log.Fatal(server.ListenAndServe())
+}
+
+// newRouter returns the router of the server, with its routes attached
+func newRouter() *gin.Engine {
+	gin.SetMode(gin.ReleaseMode)
+	router := gin.Default()
+	router.Use(cors.Default())
+
+	router.GET("/api", avatarHandler)
+
+	return router
 }
 
 func avatarHandler(ctx *gin.Context) {

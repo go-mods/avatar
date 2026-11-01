@@ -2,6 +2,7 @@ package avatar
 
 import (
 	"bytes"
+	"encoding/xml"
 	"errors"
 	"fmt"
 	"io"
@@ -14,7 +15,6 @@ import (
 	"strings"
 	"time"
 
-	svg "github.com/ajstarks/svgo"
 	"github.com/lucasb-eyer/go-colorful"
 	"golang.org/x/image/colornames"
 )
@@ -38,6 +38,22 @@ var (
 
 	// borderDashRegex matches a stroke-dasharray value: "none", "5", "5,5", "6 2", "1.5 3"
 	borderDashRegex = regexp.MustCompile(`^(none|\d+(\.\d+)?([ ,]+\d+(\.\d+)?)*)$`)
+)
+
+const (
+	// svgHeader starts the document: width and height
+	svgHeader = `<?xml version="1.0"?>` + "\n" +
+		`<svg width="%d" height="%d"` + "\n" +
+		`     xmlns="http://www.w3.org/2000/svg"` + "\n" +
+		`     xmlns:xlink="http://www.w3.org/1999/xlink">` + "\n"
+
+	// svgTextStyle is the style of the text: font family, font size and color
+	svgTextStyle = `<style type="text/css">
+<![CDATA[
+text { text-anchor:middle;dominant-baseline:auto;font-family:%s,sans-serif;font-size:%dpx;fill:%s }
+]]>
+</style>
+`
 )
 
 // avatarGenerator is a struct to hold the options for the avatar generator
@@ -365,9 +381,8 @@ func generateSVG(opts avatarGenerator) (*bytes.Buffer, error) {
 		cr.BorderColorFunc = opts.BorderColorFunc
 	}
 
-	// create the canvas
-	canvas := svg.New(buffer)
-	canvas.Start(opts.Width, opts.Height)
+	// start the document
+	_, _ = fmt.Fprintf(buffer, svgHeader, opts.Width, opts.Height)
 
 	// set the background color
 	if opts.BackgroundColor != "" {
@@ -432,7 +447,7 @@ func generateSVG(opts avatarGenerator) (*bytes.Buffer, error) {
 	}
 
 	// Start the defs
-	canvas.Def()
+	buffer.WriteString("<defs>\n")
 	// add the font file to the svg as a style
 	if opts.FontFamily != "" && opts.fontFile != "" {
 		// get the content of the font file
@@ -441,19 +456,14 @@ func generateSVG(opts avatarGenerator) (*bytes.Buffer, error) {
 			return nil, err
 		}
 		// print the font file to the svg
-		_, _ = fmt.Fprintln(canvas.Writer, "<style>")
-		_, _ = fmt.Fprintln(canvas.Writer, string(fontFile))
-		_, _ = fmt.Fprintln(canvas.Writer, "</style>")
+		_, _ = fmt.Fprintln(buffer, "<style>")
+		_, _ = fmt.Fprintln(buffer, string(fontFile))
+		_, _ = fmt.Fprintln(buffer, "</style>")
 	}
 	// add the text style
-	canvas.Style("text/css",
-		fmt.Sprintf("text { text-anchor:middle;dominant-baseline:auto;font-family:%s,sans-serif;font-size:%dpx;fill:%s }",
-			opts.FontFamily,
-			opts.FontSize,
-			opts.FontColor),
-	)
+	_, _ = fmt.Fprintf(buffer, svgTextStyle, opts.FontFamily, opts.FontSize, opts.FontColor)
 	// end the defs
-	canvas.DefEnd()
+	buffer.WriteString("</defs>\n")
 
 	// set the shape
 	if opts.Shape == "rect" {
@@ -470,7 +480,7 @@ func generateSVG(opts avatarGenerator) (*bytes.Buffer, error) {
 		rect += fmt.Sprintf(`stroke-dasharray="%s" `, opts.BorderDash)
 		rect += `/>`
 
-		_, _ = fmt.Fprintln(canvas.Writer, rect)
+		_, _ = fmt.Fprintln(buffer, rect)
 	} else {
 		circle := `<circle `
 		circle += fmt.Sprintf(`cx="%d" `, opts.Width/2)
@@ -482,20 +492,19 @@ func generateSVG(opts avatarGenerator) (*bytes.Buffer, error) {
 		circle += fmt.Sprintf(`stroke-dasharray="%s" `, opts.BorderDash)
 		circle += `/>`
 
-		_, _ = fmt.Fprintln(canvas.Writer, circle)
+		_, _ = fmt.Fprintln(buffer, circle)
 	}
 
 	// set the text
 	if opts.Initials != "" {
-		canvas.Text(
-			opts.Width/2,
-			opts.Height/2+opts.fontHeight/4,
-			opts.Initials,
-		)
+		_, _ = fmt.Fprintf(buffer, `<text x="%d" y="%d" >`, opts.Width/2, opts.Height/2+opts.fontHeight/4)
+		// The initials come from the caller: they are escaped to stay plain text
+		_ = xml.EscapeText(buffer, []byte(opts.Initials))
+		buffer.WriteString("</text>\n")
 	}
 
-	// end the canvas
-	canvas.End()
+	// end the document
+	buffer.WriteString("</svg>\n")
 
 	return buffer, nil
 }

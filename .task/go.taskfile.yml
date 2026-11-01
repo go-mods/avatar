@@ -4,6 +4,7 @@
 # Main features:
 # - Compilation and testing
 # - Linting and security checks (golangci-lint, gosec included)
+# - Vulnerability scan (govulncheck)
 # - Code formatting (golangci-lint fmt, formatters of .golangci.yml)
 # - Dependency management
 #
@@ -77,6 +78,14 @@ tasks:
     cmds:
       - echo "Linting..."
       - golangci-lint run ./...
+    silent: true
+
+  vuln:
+    desc: "Looks for known vulnerabilities reachable from the code"
+    deps: [":go-tools:check-govulncheck"]
+    cmds:
+      - echo "Scanning for vulnerabilities..."
+      - govulncheck ./...
     silent: true
 
   test:

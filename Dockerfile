@@ -1,8 +1,5 @@
 # Start from golang base image to build the server
-FROM golang:1.23-alpine as builder
-
-# Tools needed to compile
-RUN apk update && apk add --no-cache git make
+FROM golang:1.26.10-alpine AS builder
 
 # Set the current working directory inside the container
 WORKDIR /build
@@ -17,8 +14,8 @@ RUN go mod download
 # Copy the source from the current directory to the working Directory inside the container
 COPY . .
 
-# Build the Go app
-RUN go build -o bin/ ./...
+# Build the server
+RUN go build -o bin/ ./cmd/avatar
 
 
 

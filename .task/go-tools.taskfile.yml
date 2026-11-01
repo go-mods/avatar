@@ -9,12 +9,14 @@
 #   task go-tools:install                       # Install every tool
 #   task go-tools:install-editorconfig-checker  # EditorConfig validation
 #   task go-tools:install-golangci-lint         # Linter and formatter (gofmt, goimports)
-#   task go-tools:check                         # Check the installed versions (fails on mismatch)
+#   task go-tools:install-govulncheck           # Vulnerability scanner
+#   task go-tools:check                        # Check the installed versions (fails on mismatch)
 #   task go-tools:versions                      # Show the installed versions
 #
 # Tools:
 #   - editorconfig-checker: EditorConfig rules validation
 #   - golangci-lint: Go linters (gosec included) and formatters declared in .golangci.yml
+#   - govulncheck: known vulnerabilities reachable from the code
 #
 # To upgrade a tool, change its version below, then run task go-tools:install.
 version: '3'
@@ -22,6 +24,7 @@ version: '3'
 vars:
   EDITORCONFIG_CHECKER_VERSION: v3.11.3
   GOLANGCI_LINT_VERSION: v2.15.0
+  GOVULNCHECK_VERSION: v1.9.0
 
 tasks:
 
@@ -37,6 +40,7 @@ tasks:
       - echo "Installing development tools..."
       - task: install-editorconfig-checker
       - task: install-golangci-lint
+      - task: install-govulncheck
       - task: check
     silent: true
 
@@ -62,11 +66,23 @@ tasks:
           VERSION: "{{.GOLANGCI_LINT_VERSION}}"
     silent: true
 
+  # Looks for known vulnerabilities reachable from the code
+  install-govulncheck:
+    desc: "Installs or updates govulncheck"
+    cmds:
+      - task: install-tool
+        vars:
+          TOOL: govulncheck
+          PACKAGE: golang.org/x/vuln/cmd/govulncheck
+          VERSION: "{{.GOVULNCHECK_VERSION}}"
+    silent: true
+
   check:
     desc: "Checks that every tool is installed at its pinned version (fails on mismatch)"
     cmds:
       - task: check-editorconfig-checker
       - task: check-golangci-lint
+      - task: check-govulncheck
       - echo "Tools installed at their pinned versions"
     silent: true
 
@@ -84,12 +100,19 @@ tasks:
         vars: { TOOL: golangci-lint, VERSION: "{{.GOLANGCI_LINT_VERSION}}" }
     silent: true
 
+  check-govulncheck:
+    desc: "Checks the installed version of govulncheck"
+    cmds:
+      - task: check-tool
+        vars: { TOOL: govulncheck, VERSION: "{{.GOVULNCHECK_VERSION}}" }
+    silent: true
+
   versions:
     desc: "Shows the versions of Go, Task and the installed tools"
     cmds:
       - go version || echo "Go is not installed"
       - echo "task $(task --version 2>/dev/null || echo 'not installed')"
-      - for: [editorconfig-checker, golangci-lint]
+      - for: [editorconfig-checker, golangci-lint, govulncheck]
         cmd: 'if command -v {{.ITEM}} >/dev/null 2>&1; then echo "{{.ITEM}} $(go version -m "$(command -v {{.ITEM}})" | awk ''$1=="mod"{print $3}'')"; else echo "{{.ITEM}} not installed"; fi'
     silent: true
 
