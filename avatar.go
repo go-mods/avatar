@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math"
 	"net/http"
 	"net/url"
 	"os"
@@ -29,6 +28,13 @@ var (
 
 	// ErrInvalidBorderDash is returned when the border dash is neither "none" nor a list of numbers
 	ErrInvalidBorderDash = errors.New("invalid border dash")
+
+	// ErrInvalidSize is returned when a dimension is negative, or when the padding and the border
+	// leave no room for the shape
+	ErrInvalidSize = errors.New("invalid size")
+
+	// ErrInvalidColor is returned when a color is neither a color name nor a hex color code
+	ErrInvalidColor = errors.New("invalid color")
 )
 
 var (
@@ -47,13 +53,9 @@ const (
 		`     xmlns="http://www.w3.org/2000/svg"` + "\n" +
 		`     xmlns:xlink="http://www.w3.org/1999/xlink">` + "\n"
 
-	// svgTextStyle is the style of the text: font family, font size and color
-	svgTextStyle = `<style type="text/css">
-<![CDATA[
-text { text-anchor:middle;dominant-baseline:auto;font-family:%s,sans-serif;font-size:%dpx;fill:%s }
-]]>
-</style>
-`
+	// svgTextStart starts the text: x, y, font family, font size and color. These are attributes
+	// and not a style: the style of an svg inlined in a page applies to the whole page.
+	svgTextStart = `<text x="%d" y="%d" text-anchor="middle" font-family="%s" font-size="%d" fill="%s">`
 )
 
 // avatarGenerator is a struct to hold the options for the avatar generator
@@ -148,7 +150,8 @@ type avatarGenerator struct {
 type GeneratorOption func(*avatarGenerator)
 
 // GetSVG returns the svg of a name.
-// It returns ErrInvalidFontFamily, ErrInvalidFontWeight or ErrInvalidBorderDash when an option is not valid.
+// It returns ErrInvalidFontFamily, ErrInvalidFontWeight, ErrInvalidBorderDash, ErrInvalidSize or
+// ErrInvalidColor when an option is not valid.
 func GetSVG(initials string, options ...GeneratorOption) (*bytes.Buffer, error) {
 
 	// Set the default avatar generator options
@@ -356,7 +359,7 @@ func WithRandomBorderColor() GeneratorOption {
 
 // generateSVG generates the svg
 func generateSVG(opts avatarGenerator) (*bytes.Buffer, error) {
-	// The font family and the border dash are written to files, urls and the svg: reject unexpected values
+	// The options are written to files, urls and the svg: reject unexpected values
 	if err := validate(opts); err != nil {
 		return nil, err
 	}
@@ -370,55 +373,32 @@ func generateSVG(opts avatarGenerator) (*bytes.Buffer, error) {
 	}
 
 	// Color randomizer
-	cr := NewColorGenerator(opts.Initials)
+	var colorOptions []ColorOption
 	if opts.BackgroundColorFunc != nil {
-		cr.BackgroundColorFunc = opts.BackgroundColorFunc
+		colorOptions = append(colorOptions, BackgroundColorFunc(opts.BackgroundColorFunc))
 	}
 	if opts.FontColorFunc != nil {
-		cr.TextColorFunc = opts.FontColorFunc
+		colorOptions = append(colorOptions, TextColorFunc(opts.FontColorFunc))
 	}
 	if opts.BorderColorFunc != nil {
-		cr.BorderColorFunc = opts.BorderColorFunc
+		colorOptions = append(colorOptions, BorderColorFunc(opts.BorderColorFunc))
+	}
+	cr := NewColorGenerator(opts.Initials, colorOptions...)
+
+	// set the colors: a color which is not given comes from the color generator
+	var err error
+	if opts.BackgroundColor, err = resolveColor(opts.BackgroundColor, cr.GetBackgroundColor()); err != nil {
+		return nil, err
+	}
+	if opts.FontColor, err = resolveColor(opts.FontColor, cr.GetTextColor()); err != nil {
+		return nil, err
+	}
+	if opts.BorderColor, err = resolveColor(opts.BorderColor, cr.GetBorderColor()); err != nil {
+		return nil, err
 	}
 
 	// start the document
 	_, _ = fmt.Fprintf(buffer, svgHeader, opts.Width, opts.Height)
-
-	// set the background color
-	if opts.BackgroundColor != "" {
-		color, err := colorFromString(opts.BackgroundColor)
-		if err != nil {
-			opts.BackgroundColor = cr.GetBackgroundColor().Hex()
-		} else {
-			opts.BackgroundColor = color.Hex()
-		}
-	} else {
-		opts.BackgroundColor = cr.GetBackgroundColor().Hex()
-	}
-
-	// set the font color
-	if opts.FontColor != "" {
-		color, err := colorFromString(opts.FontColor)
-		if err != nil {
-			opts.FontColor = cr.GetTextColor().Hex()
-		} else {
-			opts.FontColor = color.Hex()
-		}
-	} else {
-		opts.FontColor = cr.GetTextColor().Hex()
-	}
-
-	// set the border color
-	if opts.BorderColor != "" {
-		color, err := colorFromString(opts.BorderColor)
-		if err != nil {
-			opts.BorderColor = cr.GetBorderColor().Hex()
-		} else {
-			opts.BorderColor = color.Hex()
-		}
-	} else {
-		opts.BorderColor = cr.GetBorderColor().Hex()
-	}
 
 	// set the border style
 	if opts.BorderDash == "" {
@@ -440,14 +420,12 @@ func generateSVG(opts avatarGenerator) (*bytes.Buffer, error) {
 
 	// set the font size
 	if opts.FontSize == 0 {
-		opts.fontHeight = int(math.Min(float64(opts.Width), float64(opts.Height)) * 3 / 5)
+		opts.fontHeight = min(opts.Width, opts.Height) * 3 / 5
 		opts.FontSize = opts.fontHeight * 12 / 16
 	} else {
 		opts.fontHeight = opts.FontSize * 16 / 12
 	}
 
-	// Start the defs
-	buffer.WriteString("<defs>\n")
 	// add the font file to the svg as a style
 	if opts.FontFamily != "" && opts.fontFile != "" {
 		// get the content of the font file
@@ -456,14 +434,12 @@ func generateSVG(opts avatarGenerator) (*bytes.Buffer, error) {
 			return nil, err
 		}
 		// print the font file to the svg
+		_, _ = fmt.Fprintln(buffer, "<defs>")
 		_, _ = fmt.Fprintln(buffer, "<style>")
 		_, _ = fmt.Fprintln(buffer, string(fontFile))
 		_, _ = fmt.Fprintln(buffer, "</style>")
+		_, _ = fmt.Fprintln(buffer, "</defs>")
 	}
-	// add the text style
-	_, _ = fmt.Fprintf(buffer, svgTextStyle, opts.FontFamily, opts.FontSize, opts.FontColor)
-	// end the defs
-	buffer.WriteString("</defs>\n")
 
 	// set the shape
 	if opts.Shape == "rect" {
@@ -485,7 +461,7 @@ func generateSVG(opts avatarGenerator) (*bytes.Buffer, error) {
 		circle := `<circle `
 		circle += fmt.Sprintf(`cx="%d" `, opts.Width/2)
 		circle += fmt.Sprintf(`cy="%d" `, opts.Height/2)
-		circle += fmt.Sprintf(`r="%d" `, opts.Width/2-opts.Padding-opts.BorderWidth)
+		circle += fmt.Sprintf(`r="%d" `, min(opts.Width, opts.Height)/2-opts.Padding-opts.BorderWidth)
 		circle += fmt.Sprintf(`fill="%s" `, opts.BackgroundColor)
 		circle += fmt.Sprintf(`stroke="%s" `, opts.BorderColor)
 		circle += fmt.Sprintf(`stroke-width="%d" `, opts.BorderWidth)
@@ -497,7 +473,8 @@ func generateSVG(opts avatarGenerator) (*bytes.Buffer, error) {
 
 	// set the text
 	if opts.Initials != "" {
-		_, _ = fmt.Fprintf(buffer, `<text x="%d" y="%d" >`, opts.Width/2, opts.Height/2+opts.fontHeight/4)
+		_, _ = fmt.Fprintf(buffer, svgTextStart, opts.Width/2, opts.Height/2+opts.fontHeight/4,
+			fontFamilyList(opts.FontFamily), opts.FontSize, opts.FontColor)
 		// The initials come from the caller: they are escaped to stay plain text
 		_ = xml.EscapeText(buffer, []byte(opts.Initials))
 		buffer.WriteString("</text>\n")
@@ -522,7 +499,55 @@ func validate(opts avatarGenerator) error {
 	if !borderDashRegex.MatchString(opts.BorderDash) {
 		return fmt.Errorf("%w: %q", ErrInvalidBorderDash, opts.BorderDash)
 	}
+	return validateSize(opts)
+}
+
+// validateSize checks that the dimensions describe a shape which can be drawn
+func validateSize(opts avatarGenerator) error {
+	if opts.Width <= 0 || opts.Height <= 0 {
+		return fmt.Errorf("%w: %dx%d", ErrInvalidSize, opts.Width, opts.Height)
+	}
+	for _, dimension := range []struct {
+		name  string
+		value int
+	}{
+		{"font size", opts.FontSize},
+		{"border width", opts.BorderWidth},
+		{"border radius", opts.BorderRadius},
+		{"padding", opts.Padding},
+	} {
+		if dimension.value < 0 {
+			return fmt.Errorf("%w: %s %d", ErrInvalidSize, dimension.name, dimension.value)
+		}
+	}
+	// Compared one by one: the sum of two large values could overflow
+	room := min(opts.Width, opts.Height) / 2
+	if opts.Padding >= room || opts.BorderWidth >= room-opts.Padding {
+		return fmt.Errorf("%w: padding %d and border width %d leave no room in %dx%d",
+			ErrInvalidSize, opts.Padding, opts.BorderWidth, opts.Width, opts.Height)
+	}
 	return nil
+}
+
+// fontFamilyList returns the value of the font-family property. The family is quoted because a
+// name like "M PLUS 1p" is not a valid list of CSS identifiers: fontFamilyRegex excludes the quote.
+func fontFamilyList(family string) string {
+	if family == "" {
+		return "sans-serif"
+	}
+	return "'" + family + "',sans-serif"
+}
+
+// resolveColor returns the hex code of a color, or of the generated color when no color is given
+func resolveColor(value string, generated colorful.Color) (string, error) {
+	if value == "" {
+		return generated.Hex(), nil
+	}
+	color, err := colorFromString(value)
+	if err != nil {
+		return "", fmt.Errorf("%w: %q", ErrInvalidColor, value)
+	}
+	return color.Hex(), nil
 }
 
 // httpClient is used to download the font files; the timeout prevents a slow or

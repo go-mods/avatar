@@ -198,7 +198,8 @@ func avatarHandler(ctx *gin.Context) {
 	if err != nil {
 		status := http.StatusInternalServerError
 		if errors.Is(err, avatar.ErrInvalidFontFamily) || errors.Is(err, avatar.ErrInvalidFontWeight) ||
-			errors.Is(err, avatar.ErrInvalidBorderDash) {
+			errors.Is(err, avatar.ErrInvalidBorderDash) || errors.Is(err, avatar.ErrInvalidSize) ||
+			errors.Is(err, avatar.ErrInvalidColor) {
 			status = http.StatusBadRequest
 		}
 		ctx.JSON(status, gin.H{"error": err.Error()})

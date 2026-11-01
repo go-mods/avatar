@@ -7,12 +7,7 @@
 @font-face {}
 
 </style>
-<style type="text/css">
-<![CDATA[
-text { text-anchor:middle;dominant-baseline:auto;font-family:Inter,sans-serif;font-size:30px;fill:#059108 }
-]]>
-</style>
 </defs>
 <circle cx="24" cy="24" r="24" fill="#9fd5a0" stroke="#879187" stroke-width="0" stroke-dasharray="none" />
-<text x="24" y="34" >IJ</text>
+<text x="24" y="34" text-anchor="middle" font-family="'Inter',sans-serif" font-size="30" fill="#059108">IJ</text>
 </svg>

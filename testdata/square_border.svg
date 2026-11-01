@@ -2,13 +2,6 @@
 <svg width="64" height="64"
      xmlns="http://www.w3.org/2000/svg"
      xmlns:xlink="http://www.w3.org/1999/xlink">
-<defs>
-<style type="text/css">
-<![CDATA[
-text { text-anchor:middle;dominant-baseline:auto;font-family:,sans-serif;font-size:28px;fill:#8e7c06 }
-]]>
-</style>
-</defs>
 <rect x="2" y="2" width="60" height="60" rx="8" ry="8" fill="#c8c3a2" stroke="#afa318" stroke-width="2" stroke-dasharray="6 2" />
-<text x="32" y="41" >CD</text>
+<text x="32" y="41" text-anchor="middle" font-family="sans-serif" font-size="28" fill="#8e7c06">CD</text>
 </svg>

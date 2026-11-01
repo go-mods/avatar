@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"io"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -69,6 +70,11 @@ func TestGetSVG_output(t *testing.T) {
 			initials: "IJ",
 			options:  []GeneratorOption{WithFont("Inter", 400), WithFontDir(fontDir), WithFontSize(30)},
 		},
+		{
+			name:     "wide_circle",
+			initials: "KL",
+			options:  []GeneratorOption{WithWidth(200), WithHeight(50), WithBorderWidth(2)},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -88,6 +94,14 @@ func TestGetSVG_output(t *testing.T) {
 }
 
 func TestGetSVG_options(t *testing.T) {
+	constant := func(hex string) ColorFunc {
+		return func(float64) colorful.Color {
+			color, err := colorful.Hex(hex)
+			require.NoError(t, err)
+			return color
+		}
+	}
+
 	tests := []struct {
 		name    string
 		options []GeneratorOption
@@ -98,8 +112,8 @@ func TestGetSVG_options(t *testing.T) {
 		{name: "height", options: []GeneratorOption{WithHeight(100)}, want: `<svg width="48" height="100"`},
 		{name: "default height", options: []GeneratorOption{WithHeight(0)}, want: `<svg width="48" height="48"`},
 		{name: "background color", options: []GeneratorOption{WithBackgroundColor("#123456")}, want: `fill="#123456"`},
-		{name: "font size", options: []GeneratorOption{WithFontSize(30)}, want: `font-size:30px`},
-		{name: "font color", options: []GeneratorOption{WithFontColor("#123456")}, want: `fill:#123456`},
+		{name: "font size", options: []GeneratorOption{WithFontSize(30)}, want: `font-size="30"`},
+		{name: "font color", options: []GeneratorOption{WithFontColor("#123456")}, want: `font-size="21" fill="#123456"`},
 		{name: "border width", options: []GeneratorOption{WithBorderWidth(3)}, want: `stroke-width="3"`},
 		{name: "border color", options: []GeneratorOption{WithBorderColor("#123456")}, want: `stroke="#123456"`},
 		{name: "border radius", options: []GeneratorOption{WithShape("square"), WithBorderRadius(5)}, want: `rx="5" ry="5"`},
@@ -108,7 +122,13 @@ func TestGetSVG_options(t *testing.T) {
 		{name: "unknown shape", options: []GeneratorOption{WithShape("star")}, want: `<circle `},
 		{name: "empty shape", options: []GeneratorOption{WithShape("")}, want: `<circle `},
 		{name: "rect shape", options: []GeneratorOption{WithShape("rect")}, want: `<rect `},
-		{name: "invalid background color", options: []GeneratorOption{WithBackgroundColor("nope")}, want: `fill="#c4b3a2"`},
+		{name: "tall circle", options: []GeneratorOption{WithWidth(50), WithHeight(200)}, want: `r="25"`},
+		{name: "wide circle with padding and border", options: []GeneratorOption{WithWidth(200), WithHeight(50), WithPadding(5), WithBorderWidth(2)}, want: `r="18"`},
+		{name: "smallest room left", options: []GeneratorOption{WithPadding(23)}, want: `r="1"`},
+		{name: "background color func", options: []GeneratorOption{WithBackgroundColorFunc(constant("#010203"))}, want: `fill="#010203"`},
+		{name: "font color func", options: []GeneratorOption{WithFontColorFunc(constant("#010203"))}, want: `font-size="21" fill="#010203"`},
+		{name: "border color func", options: []GeneratorOption{WithBorderColorFunc(constant("#010203"))}, want: `stroke="#010203"`},
+		{name: "color wins over color func", options: []GeneratorOption{WithBackgroundColor("#123456"), WithBackgroundColorFunc(constant("#010203"))}, want: `fill="#123456"`},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -134,6 +154,21 @@ func TestGetSVG_rejectsUnsafeOptions(t *testing.T) {
 		{name: "weight too high", options: []GeneratorOption{WithFont("Inter", 1001)}, want: ErrInvalidFontWeight},
 		{name: "attribute in border dash", options: []GeneratorOption{WithBorderDash(`1" onload="alert(1)`)}, want: ErrInvalidBorderDash},
 		{name: "empty border dash", options: []GeneratorOption{WithBorderDash("")}, want: ErrInvalidBorderDash},
+		{name: "negative width", options: []GeneratorOption{WithWidth(-1)}, want: ErrInvalidSize},
+		{name: "negative height", options: []GeneratorOption{WithHeight(-1)}, want: ErrInvalidSize},
+		{name: "negative font size", options: []GeneratorOption{WithFontSize(-1)}, want: ErrInvalidSize},
+		{name: "negative border width", options: []GeneratorOption{WithBorderWidth(-1)}, want: ErrInvalidSize},
+		{name: "negative border radius", options: []GeneratorOption{WithBorderRadius(-1)}, want: ErrInvalidSize},
+		{name: "negative padding", options: []GeneratorOption{WithPadding(-1)}, want: ErrInvalidSize},
+		{name: "padding of half the size", options: []GeneratorOption{WithPadding(24)}, want: ErrInvalidSize},
+		{name: "padding too large on a square", options: []GeneratorOption{WithShape("square"), WithPadding(100)}, want: ErrInvalidSize},
+		{name: "border of half the size", options: []GeneratorOption{WithBorderWidth(24)}, want: ErrInvalidSize},
+		{name: "padding and border filling the size", options: []GeneratorOption{WithPadding(12), WithBorderWidth(12)}, want: ErrInvalidSize},
+		{name: "values whose sum overflows", options: []GeneratorOption{WithPadding(math.MaxInt), WithBorderWidth(math.MaxInt)}, want: ErrInvalidSize},
+		{name: "size too small for a shape", options: []GeneratorOption{WithWidth(1), WithHeight(1)}, want: ErrInvalidSize},
+		{name: "invalid background color", options: []GeneratorOption{WithBackgroundColor("nope")}, want: ErrInvalidColor},
+		{name: "invalid font color", options: []GeneratorOption{WithFontColor("nope")}, want: ErrInvalidColor},
+		{name: "invalid border color", options: []GeneratorOption{WithBorderColor(`"><script>`)}, want: ErrInvalidColor},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -170,6 +205,32 @@ func TestGetSVG_acceptsValidOptions(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			svg, err := GetSVG("AB", tt.options...)
 			require.NoError(t, err)
+			assert.Contains(t, svg.String(), tt.want)
+		})
+	}
+}
+
+func TestGetSVG_fontFamily(t *testing.T) {
+	fontDir := t.TempDir()
+	for _, file := range []string{"Inter-400", "Roboto Mono-400", "M PLUS 1p-400"} {
+		require.NoError(t, os.WriteFile(filepath.Join(fontDir, file), []byte("@font-face {}\n"), 0o600))
+	}
+
+	tests := []struct {
+		name    string
+		options []GeneratorOption
+		want    string
+	}{
+		{name: "no family", want: `font-family="sans-serif"`},
+		{name: "one word", options: []GeneratorOption{WithFont("Inter", 400)}, want: `font-family="'Inter',sans-serif"`},
+		{name: "several words", options: []GeneratorOption{WithFont("Roboto Mono", 400)}, want: `font-family="'Roboto Mono',sans-serif"`},
+		{name: "word starting with a digit", options: []GeneratorOption{WithFont("M PLUS 1p", 400)}, want: `font-family="'M PLUS 1p',sans-serif"`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svg, err := GetSVG("AB", append(tt.options, WithFontDir(fontDir))...)
+			require.NoError(t, err)
+			requireWellFormed(t, svg.String())
 			assert.Contains(t, svg.String(), tt.want)
 		})
 	}
@@ -216,6 +277,38 @@ func TestNewColorGenerator(t *testing.T) {
 	assert.Equal(t, "#ff0000", custom.GetBackgroundColor().Hex())
 	assert.Equal(t, "#ff0000", custom.GetTextColor().Hex())
 	assert.Equal(t, "#ff0000", custom.GetBorderColor().Hex())
+}
+
+func TestNewColorGenerator_seed(t *testing.T) {
+	seedOf := func(name string) float64 {
+		var seed float64
+		NewColorGenerator(name, BackgroundColorFunc(func(r float64) colorful.Color {
+			seed = r
+			return colorful.Color{}
+		}))
+		return seed
+	}
+
+	tests := []struct {
+		name string
+		want float64
+	}{
+		{name: "", want: 0},
+		{name: "AB", want: 0.081},
+		// The hash of these names overflows to a negative value
+		{name: "abcdefghijklmn", want: 0.351},
+		{name: "Jean-Baptiste Emmanuel Zorg de la Tour", want: 0.937},
+		// The hash of this name overflows to a positive value
+		{name: "abcdefghijklmnopqrstuvwxyz", want: 0.789},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			seed := seedOf(tt.name)
+			assert.InDelta(t, tt.want, seed, 1e-9)
+			assert.GreaterOrEqual(t, seed, 0.0)
+			assert.Less(t, seed, 1.0)
+		})
+	}
 }
 
 func TestWithFont_url(t *testing.T) {

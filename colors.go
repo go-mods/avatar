@@ -11,7 +11,7 @@ type colorGenerator struct {
 	Name string
 
 	// Hash is the hash of the name
-	Hash int
+	Hash int64
 
 	// BackgroundColor is the background color
 	BackgroundColor colorful.Color
@@ -122,16 +122,18 @@ func defaultBorderColorGenerator(r float64) colorful.Color {
 	return colorful.Hsv(r*360.0, r*.2, 0.4+r*0.5)
 }
 
-// hash returns a hash of a string
-func (c *colorGenerator) hash(s string) int {
-	h := 0
+// hash returns a hash of a string. It uses an int64 to give the same result on every architecture,
+// and it overflows on long strings: the result can be negative.
+func (c *colorGenerator) hash(s string) int64 {
+	var h int64
 	for _, r := range s {
-		h = 31*h + int(r)
+		h = 31*h + int64(r)
 	}
 	return h
 }
 
-// normalizeHash returns a normalized hash between two values
-func (c *colorGenerator) normalizeHash(hash, min, max int) float64 {
-	return float64(min) + float64(hash%1000)/1000*float64(max-min)
+// normalizeHash returns a normalized hash between two values, the upper one being excluded
+func (c *colorGenerator) normalizeHash(hash int64, min, max int) float64 {
+	remainder := (hash%1000 + 1000) % 1000
+	return float64(min) + float64(remainder)/1000*float64(max-min)
 }

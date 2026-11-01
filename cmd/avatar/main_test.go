@@ -37,6 +37,20 @@ func TestAvatarRoute(t *testing.T) {
 			contentType: "application/json; charset=utf-8",
 			want:        "invalid border dash",
 		},
+		{
+			name:        "padding too large",
+			target:      "/api?name=John%20Doe&padding=100",
+			status:      http.StatusBadRequest,
+			contentType: "application/json; charset=utf-8",
+			want:        "invalid size",
+		},
+		{
+			name:        "invalid color",
+			target:      "/api?name=John%20Doe&backgroundColor=notacolor",
+			status:      http.StatusBadRequest,
+			contentType: "application/json; charset=utf-8",
+			want:        "invalid color",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
