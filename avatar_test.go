@@ -117,7 +117,6 @@ func TestGetSVG_options(t *testing.T) {
 		{name: "border radius", options: []GeneratorOption{WithShape("square"), WithBorderRadius(5)}, want: `rx="5" ry="5"`},
 		{name: "padding on a circle", options: []GeneratorOption{WithPadding(4)}, want: `r="20"`},
 		{name: "padding on a square", options: []GeneratorOption{WithShape("square"), WithPadding(4)}, want: `x="4" y="4" width="40" height="40"`},
-		{name: "unknown shape", options: []GeneratorOption{WithShape("star")}, want: `<circle `},
 		{name: "empty shape", options: []GeneratorOption{WithShape("")}, want: `<circle `},
 		{name: "rect shape", options: []GeneratorOption{WithShape("rect")}, want: `<rect `},
 		{name: "tall circle", options: []GeneratorOption{WithWidth(50), WithHeight(200)}, want: `r="25"`},
@@ -167,6 +166,8 @@ func TestGetSVG_rejectsUnsafeOptions(t *testing.T) {
 		{name: "padding and border filling the size", options: []GeneratorOption{WithPadding(12), WithBorderWidth(12)}, want: ErrInvalidSize},
 		{name: "values whose sum overflows", options: []GeneratorOption{WithPadding(math.MaxInt), WithBorderWidth(math.MaxInt)}, want: ErrInvalidSize},
 		{name: "size too small for a shape", options: []GeneratorOption{WithWidth(1), WithHeight(1)}, want: ErrInvalidSize},
+		{name: "unknown shape", options: []GeneratorOption{WithShape("star")}, want: ErrInvalidShape},
+		{name: "markup in shape", options: []GeneratorOption{WithShape(`"><script>`)}, want: ErrInvalidShape},
 		{name: "invalid background color", options: []GeneratorOption{WithBackgroundColor("nope")}, want: ErrInvalidColor},
 		{name: "invalid font color", options: []GeneratorOption{WithFontColor("nope")}, want: ErrInvalidColor},
 		{name: "invalid border color", options: []GeneratorOption{WithBorderColor(`"><script>`)}, want: ErrInvalidColor},
@@ -236,6 +237,109 @@ func TestGetSVG_fontFamily(t *testing.T) {
 			assert.Contains(t, svg.String(), tt.want)
 		})
 	}
+}
+
+func TestGetSVG_randomColors(t *testing.T) {
+	useSeeds := func(t *testing.T, seeds ...float64) {
+		t.Helper()
+		draw := randomSeed
+		randomSeed = func() float64 {
+			seed := seeds[0]
+			seeds = seeds[1:]
+			return seed
+		}
+		t.Cleanup(func() { randomSeed = draw })
+	}
+	hexOf := func(f ColorFunc, seed float64) string { return f(seed).Hex() }
+	named := NewColorGenerator("AB")
+	nameBackground := named.GetBackgroundColor().Hex()
+	nameText := named.GetTextColor().Hex()
+	nameBorder := named.GetBorderColor().Hex()
+
+	tests := []struct {
+		name       string
+		seeds      []float64
+		options    []GeneratorOption
+		background string
+		text       string
+		border     string
+	}{
+		{
+			name:       "no random option",
+			background: nameBackground, text: nameText, border: nameBorder,
+		},
+		{
+			name:       "all colors share one value",
+			seeds:      []float64{0.5},
+			options:    []GeneratorOption{WithRandomColor()},
+			background: hexOf(defaultBackgroundColorGenerator, 0.5),
+			text:       hexOf(defaultTextColorGenerator, 0.5),
+			border:     hexOf(defaultBorderColorGenerator, 0.5),
+		},
+		{
+			name:       "background only",
+			seeds:      []float64{0.5},
+			options:    []GeneratorOption{WithRandomBackgroundColor()},
+			background: hexOf(defaultBackgroundColorGenerator, 0.5), text: nameText, border: nameBorder,
+		},
+		{
+			name:       "font only",
+			seeds:      []float64{0.5},
+			options:    []GeneratorOption{WithRandomFontColor()},
+			background: nameBackground, text: hexOf(defaultTextColorGenerator, 0.5), border: nameBorder,
+		},
+		{
+			name:       "border only",
+			seeds:      []float64{0.5},
+			options:    []GeneratorOption{WithRandomBorderColor()},
+			background: nameBackground, text: nameText, border: hexOf(defaultBorderColorGenerator, 0.5),
+		},
+		{
+			name:       "one value for each color",
+			seeds:      []float64{0.2, 0.4, 0.6},
+			options:    []GeneratorOption{WithRandomBackgroundColor(), WithRandomFontColor(), WithRandomBorderColor()},
+			background: hexOf(defaultBackgroundColorGenerator, 0.2),
+			text:       hexOf(defaultTextColorGenerator, 0.4),
+			border:     hexOf(defaultBorderColorGenerator, 0.6),
+		},
+		{
+			name:       "a given color stays",
+			seeds:      []float64{0.5},
+			options:    []GeneratorOption{WithRandomColor(), WithBackgroundColor("#123456")},
+			background: "#123456",
+			text:       hexOf(defaultTextColorGenerator, 0.5),
+			border:     hexOf(defaultBorderColorGenerator, 0.5),
+		},
+		{
+			name:  "the value goes through the color function",
+			seeds: []float64{0.5},
+			options: []GeneratorOption{WithRandomBackgroundColor(), WithBackgroundColorFunc(func(r float64) colorful.Color {
+				return colorful.Color{R: r}
+			})},
+			background: "#800000", text: nameText, border: nameBorder,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			useSeeds(t, tt.seeds...)
+
+			svg, err := GetSVG("AB", tt.options...)
+
+			require.NoError(t, err)
+			assert.Contains(t, svg.String(), `r="24" fill="`+tt.background+`" stroke="`+tt.border+`"`)
+			assert.Contains(t, svg.String(), `font-size="21" fill="`+tt.text+`"`)
+		})
+	}
+}
+
+func TestGetSVG_randomColorsChange(t *testing.T) {
+	outputs := map[string]bool{}
+	for range 20 {
+		svg, err := GetSVG("AB", WithRandomColor())
+		require.NoError(t, err)
+		outputs[svg.String()] = true
+	}
+	assert.Greater(t, len(outputs), 1)
 }
 
 func TestColorFromString(t *testing.T) {

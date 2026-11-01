@@ -45,6 +45,13 @@ func TestAvatarRoute(t *testing.T) {
 			want:        "invalid size",
 		},
 		{
+			name:        "invalid shape",
+			target:      "/api?name=John%20Doe&shape=star",
+			status:      http.StatusBadRequest,
+			contentType: "application/json; charset=utf-8",
+			want:        "invalid shape",
+		},
+		{
 			name:        "invalid color",
 			target:      "/api?name=John%20Doe&backgroundColor=notacolor",
 			status:      http.StatusBadRequest,

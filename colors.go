@@ -4,10 +4,10 @@ import (
 	"github.com/lucasb-eyer/go-colorful"
 )
 
-// colorGenerator is a struct to hold colors randomizer from a string
-type colorGenerator struct {
-	// Name is the name to get the color from
-	// it is used has a seed to generate the colors
+// ColorGenerator holds the colors generated from a name: the same name always gives the same colors
+type ColorGenerator struct {
+	// Name is the name to get the colors from
+	// it is used as a seed to generate the colors
 	Name string
 
 	// Hash is the hash of the name
@@ -20,29 +20,26 @@ type colorGenerator struct {
 	// BorderColor is the border color
 	BorderColor colorful.Color
 
-	// BackgroundColorFunc is the background color function
-	// if defined, it will be used instead of BackgroundColor
+	// BackgroundColorFunc is the function which generates the background color
 	BackgroundColorFunc ColorFunc
-	// TextColorFunc is the text color function
-	// if defined, it will be used instead of TextColor
+	// TextColorFunc is the function which generates the text color
 	TextColorFunc ColorFunc
-	// BorderColorFunc is the border color function
-	// if defined, it will be used instead of BorderColor
+	// BorderColorFunc is the function which generates the border color
 	BorderColorFunc ColorFunc
 }
 
-// ColorOption is a function to set the colorGenerator options
-type ColorOption func(*colorGenerator)
+// ColorOption is a function to set the ColorGenerator options
+type ColorOption func(*ColorGenerator)
 
-// ColorFunc is function used to generate a color
+// ColorFunc is a function used to generate a color from a value in the range [0, 1)
 type ColorFunc func(r float64) colorful.Color
 
-// NewColorGenerator returns a new colorGenerator
-func NewColorGenerator(Name string, options ...ColorOption) *colorGenerator {
+// NewColorGenerator returns the colors generated from a name
+func NewColorGenerator(name string, options ...ColorOption) *ColorGenerator {
 
 	// set the default generator options
-	c := &colorGenerator{
-		Name:                Name,
+	c := &ColorGenerator{
+		Name:                name,
 		BackgroundColorFunc: defaultBackgroundColorGenerator,
 		TextColorFunc:       defaultTextColorGenerator,
 		BorderColorFunc:     defaultBorderColorGenerator,
@@ -54,10 +51,10 @@ func NewColorGenerator(Name string, options ...ColorOption) *colorGenerator {
 	}
 
 	// calculate the hash
-	c.Hash = c.hash(c.Name)
+	c.Hash = hash(c.Name)
 
 	// normalize the hash to get a number between 0 and 1
-	nh := c.normalizeHash(c.Hash, 0, 1)
+	nh := normalizeHash(c.Hash)
 
 	// get the background color
 	c.BackgroundColor = c.BackgroundColorFunc(nh)
@@ -73,37 +70,37 @@ func NewColorGenerator(Name string, options ...ColorOption) *colorGenerator {
 
 // BackgroundColorFunc sets the background color generator function
 func BackgroundColorFunc(f ColorFunc) ColorOption {
-	return func(c *colorGenerator) {
+	return func(c *ColorGenerator) {
 		c.BackgroundColorFunc = f
 	}
 }
 
 // TextColorFunc sets the text color generator function
 func TextColorFunc(f ColorFunc) ColorOption {
-	return func(c *colorGenerator) {
+	return func(c *ColorGenerator) {
 		c.TextColorFunc = f
 	}
 }
 
 // BorderColorFunc sets the border color generator function
 func BorderColorFunc(f ColorFunc) ColorOption {
-	return func(c *colorGenerator) {
+	return func(c *ColorGenerator) {
 		c.BorderColorFunc = f
 	}
 }
 
-// GetBackgroundColor returns a color
-func (c *colorGenerator) GetBackgroundColor() colorful.Color {
+// GetBackgroundColor returns the background color
+func (c *ColorGenerator) GetBackgroundColor() colorful.Color {
 	return c.BackgroundColor
 }
 
-// GetTextColor returns a color
-func (c *colorGenerator) GetTextColor() colorful.Color {
+// GetTextColor returns the text color
+func (c *ColorGenerator) GetTextColor() colorful.Color {
 	return c.TextColor
 }
 
-// GetBorderColor returns a color
-func (c *colorGenerator) GetBorderColor() colorful.Color {
+// GetBorderColor returns the border color
+func (c *ColorGenerator) GetBorderColor() colorful.Color {
 	return c.BorderColor
 }
 
@@ -124,7 +121,7 @@ func defaultBorderColorGenerator(r float64) colorful.Color {
 
 // hash returns a hash of a string. It uses an int64 to give the same result on every architecture,
 // and it overflows on long strings: the result can be negative.
-func (c *colorGenerator) hash(s string) int64 {
+func hash(s string) int64 {
 	var h int64
 	for _, r := range s {
 		h = 31*h + int64(r)
@@ -132,8 +129,7 @@ func (c *colorGenerator) hash(s string) int64 {
 	return h
 }
 
-// normalizeHash returns a normalized hash between two values, the upper one being excluded
-func (c *colorGenerator) normalizeHash(hash int64, min, max int) float64 {
-	remainder := (hash%1000 + 1000) % 1000
-	return float64(min) + float64(remainder)/1000*float64(max-min)
+// normalizeHash returns a hash as a number in the range [0, 1)
+func normalizeHash(hash int64) float64 {
+	return float64((hash%1000+1000)%1000) / 1000
 }

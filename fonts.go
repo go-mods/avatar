@@ -60,7 +60,7 @@ var (
 // directory, or else downloaded and kept there. The style is empty when the font holds none of the
 // letters or when the font servers cannot be reached: the text is then drawn with the fallback font.
 func fontStyle(ctx context.Context, opts avatarGenerator) (string, error) {
-	path := filepath.Join(opts.FontDir, fontCacheFile(opts.FontFamily, opts.FontWeight, opts.Initials))
+	path := filepath.Join(opts.fontDir, fontCacheFile(opts.fontFamily, opts.fontWeight, opts.initials))
 
 	// An empty file keeps the answer of a font without these letters; any other file which is not
 	// a valid style is replaced
@@ -72,7 +72,7 @@ func fontStyle(ctx context.Context, opts avatarGenerator) (string, error) {
 		return "", err
 	}
 
-	style, err := downloadFontStyle(ctx, opts.FontFamily, opts.FontWeight, opts.Initials)
+	style, err := downloadFontStyle(ctx, opts.fontFamily, opts.fontWeight, opts.initials)
 	// The avatar stays useful without its font, and the font is downloaded at the next call
 	if errors.Is(err, errFontUnavailable) && ctx.Err() == nil {
 		return "", nil
